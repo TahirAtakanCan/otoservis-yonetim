@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
 import 'package:otoservis_app/screens/dashboard/dashboard_screen.dart';
+import 'package:otoservis_app/screens/inventory/inventory_screen.dart';
 import 'package:otoservis_app/screens/login/login_screen.dart';
 import 'package:otoservis_app/screens/pdf/pdf_preview_screen.dart';
 import 'package:otoservis_app/screens/reports/reports_screen.dart';
@@ -92,17 +93,6 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
       routerConfig: router,
-    );
-  }
-}
-
-class InventoryScreen extends StatelessWidget {
-  const InventoryScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Inventory Screen')),
     );
   }
 }
