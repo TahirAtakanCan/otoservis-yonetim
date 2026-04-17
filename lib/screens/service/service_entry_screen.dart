@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
 import 'package:otoservis_app/providers/inventory_provider.dart';
 import 'package:otoservis_app/providers/service_provider.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
+import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 
 class ServiceEntryScreen extends StatefulWidget {
   const ServiceEntryScreen({
@@ -36,7 +38,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   final List<LaborItem> _labor = [];
 
   bool _kdvIncluded = true;
-  double _kdvRate = 0.2;
+  double _kdvRate = KdvRates.values.last;
+
+  String? _inventorySearchError;
 
   static const double _leftWidth = 280;
   static const double _rightWidth = 200;
@@ -101,11 +105,13 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       final inv = context.read<InventoryProvider>();
       try {
         await inv.searchParts(value);
+        if (mounted) setState(() => _inventorySearchError = null);
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Arama hatası: $e')),
-        );
+        setState(() {
+          _inventorySearchError =
+              'Parça araması yapılamadı. Bağlantınızı kontrol edin. ($e)';
+        });
       }
     });
   }
@@ -356,7 +362,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kayıt başarısız: $e')),
+        SnackBar(content: Text('Servis kaydedilemedi: $e')),
       );
     }
   }
@@ -365,7 +371,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   Widget build(BuildContext context) {
     final inv = context.watch<InventoryProvider>();
     final svc = context.watch<ServiceProvider>();
-    final money = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
 
     return Scaffold(
       appBar: AppBar(
@@ -401,7 +406,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                 SizedBox(
                   width: _rightWidth,
                   child: _buildRightPanel(
-                    money,
                     svc.isSaving,
                   ),
                 ),
@@ -415,12 +419,22 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
 
   Widget _buildLeftPanel(InventoryProvider inv) {
     return Material(
-      color: Colors.grey.shade100,
+      color: AppColors.surfaceMuted,
       child: Padding(
         padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_inventorySearchError != null) ...[
+              AppErrorBanner(
+                message: _inventorySearchError!,
+                onRetry: () {
+                  setState(() => _inventorySearchError = null);
+                  _onSearchChanged(_searchController.text);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               'Stoktan parça',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -480,7 +494,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            'Stok: ${item.quantity} · ${NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(item.unitPrice)}',
+                            'Stok: ${item.quantity} · ${AppFormatters.formatLira(item.unitPrice)}',
                             style: TextStyle(
                               fontSize: 11,
                               color: disabled ? Colors.red : null,
@@ -532,8 +546,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   }
 
   Widget _buildPartsTable() {
-    final money = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-
     if (_parts.isEmpty) {
       return const Center(
         child: Text(
@@ -567,8 +579,8 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   cells: [
                     DataCell(Text(p.partName)),
                     DataCell(Text('${p.quantity}')),
-                    DataCell(Text(money.format(p.unitPrice))),
-                    DataCell(Text(money.format(p.totalPrice))),
+                    DataCell(Text(AppFormatters.formatLira(p.unitPrice))),
+                    DataCell(Text(AppFormatters.formatLira(p.totalPrice))),
                     DataCell(
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20),
@@ -588,8 +600,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   }
 
   Widget _buildLaborTable() {
-    final money = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Column(
@@ -630,7 +640,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                             return DataRow(
                               cells: [
                                 DataCell(Text(l.description)),
-                                DataCell(Text(money.format(l.price))),
+                                DataCell(Text(AppFormatters.formatLira(l.price))),
                                 DataCell(
                                   IconButton(
                                     icon: const Icon(
@@ -656,7 +666,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   }
 
   Widget _buildRightPanel(
-    NumberFormat money,
     bool saving,
   ) {
     final auth = context.watch<AuthProvider>();
@@ -666,7 +675,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             : (auth.currentUser?.email ?? '—');
 
     return Material(
-      color: Colors.blue.shade50,
+      color: AppColors.secondaryOrange.withValues(alpha: 0.08),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(10),
         child: Column(
@@ -679,7 +688,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   ),
             ),
             const SizedBox(height: 8),
-            _kv('Ara toplam', money.format(_subtotal())),
+            _kv('Ara toplam', AppFormatters.formatLira(_subtotal())),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -706,16 +715,20 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   vertical: 8,
                 ),
               ),
-              items: const [
-                DropdownMenuItem(value: 0.1, child: Text('%10')),
-                DropdownMenuItem(value: 0.2, child: Text('%20')),
-              ],
+              items: KdvRates.values
+                  .map(
+                    (r) => DropdownMenuItem<double>(
+                      value: r,
+                      child: Text(KdvRates.label(r)),
+                    ),
+                  )
+                  .toList(),
               onChanged: _kdvIncluded
                   ? (v) => setState(() => _kdvRate = v ?? 0.2)
                   : null,
             ),
             const SizedBox(height: 8),
-            _kv('KDV tutarı', money.format(_kdvAmount())),
+            _kv('KDV tutarı', AppFormatters.formatLira(_kdvAmount())),
             const Divider(height: 20),
             Text(
               'GENEL TOPLAM',
@@ -725,7 +738,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              money.format(_grandTotal()),
+              AppFormatters.formatLira(_grandTotal()),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: Theme.of(context).colorScheme.primary,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/utils/constants.dart';
 
 /// Sol sabit sidebar (220px). Rol bazlı menü ve çıkış.
 class AppSidebar extends StatelessWidget {
@@ -20,7 +21,7 @@ class AppSidebar extends StatelessWidget {
 
     return Container(
       width: width,
-      color: const Color(0xFF1E293B),
+      color: AppColors.primaryNavy,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -36,7 +37,7 @@ class AppSidebar extends StatelessWidget {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Otoservis',
+                        BusinessInfo.name,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,

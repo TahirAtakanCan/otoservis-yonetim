@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/providers/connectivity_notifier.dart';
 import 'package:otoservis_app/screens/dashboard/dashboard_screen.dart';
 import 'package:otoservis_app/screens/inventory/inventory_screen.dart';
 import 'package:otoservis_app/screens/login/login_screen.dart';
@@ -10,6 +11,7 @@ import 'package:otoservis_app/screens/reports/reports_screen.dart';
 import 'package:otoservis_app/screens/service/service_entry_screen.dart';
 import 'package:otoservis_app/screens/vehicle/vehicle_history_screen.dart';
 import 'package:otoservis_app/screens/vehicle/vehicle_search_screen.dart';
+import 'package:otoservis_app/utils/constants.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -17,6 +19,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final connectivity = context.watch<ConnectivityNotifier>();
 
     final router = GoRouter(
       initialLocation: '/',
@@ -86,13 +89,67 @@ class App extends StatelessWidget {
       ],
     );
 
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primaryNavy,
+      primary: AppColors.primaryNavy,
+      secondary: AppColors.secondaryOrange,
+      brightness: Brightness.light,
+    );
+
     return MaterialApp.router(
-      title: 'Otoservis App',
+      title: BusinessInfo.name,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: colorScheme,
+        useMaterial3: true,
+        appBarTheme: AppBarTheme(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primaryNavy,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ),
       routerConfig: router,
+      builder: (context, child) {
+        return Column(
+          children: [
+            if (!connectivity.isOnline)
+              Material(
+                color: Colors.orange.shade900,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cloud_off, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'İnternet bağlantısı yok. Firestore çevrimdışı önbelleği kullanılıyor; veriler senkronize olmayabilir.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
     );
   }
 }

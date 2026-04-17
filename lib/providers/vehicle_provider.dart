@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
 
 class VehicleProvider extends ChangeNotifier {
   VehicleProvider({FirebaseFirestore? firestore})
@@ -13,24 +14,12 @@ class VehicleProvider extends ChangeNotifier {
   Vehicle? _selectedVehicle;
   Vehicle? get selectedVehicle => _selectedVehicle;
 
-  /// Türk plakası: trim, büyük harf, tüm boşlukları kaldır (Firestore anahtarı / arama).
-  String normalizePlate(String input) {
-    final trimmed = input.trim();
-    if (trimmed.isEmpty) return '';
-    final upper = trimmed.toUpperCase();
-    return upper.replaceAll(RegExp(r'\s+'), '');
-  }
+  /// Türk plakası: [AppFormatters.normalizePlate].
+  String normalizePlate(String input) => AppFormatters.normalizePlate(input);
 
-  /// Görüntü için kabaca "34 ABC 123" biçimi (kompakt plakadan).
-  String formatPlateForDisplay(String normalizedPlate) {
-    final p = normalizePlate(normalizedPlate);
-    if (p.length < 3) return p;
-    final match = RegExp(r'^(\d{2})([A-Z]{1,3})(\d{2,5})$').firstMatch(p);
-    if (match != null) {
-      return '${match[1]} ${match[2]} ${match[3]}';
-    }
-    return p;
-  }
+  /// Görüntü: [AppFormatters.formatPlateDisplay].
+  String formatPlateForDisplay(String normalizedPlate) =>
+      AppFormatters.formatPlateDisplay(normalizedPlate);
 
   void setSelectedVehicle(Vehicle? vehicle) {
     _selectedVehicle = vehicle;

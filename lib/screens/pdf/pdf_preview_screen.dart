@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/pdf/pdf_template.dart';
 
 class PdfPreviewScreen extends StatefulWidget {
@@ -34,7 +35,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
         .get();
     final serviceData = serviceSnap.data();
     if (serviceData == null) {
-      throw StateError('Servis kaydi bulunamadi.');
+      throw StateError('Servis kaydı bulunamadı.');
     }
 
     final service = ServiceRecord.fromMap({
@@ -68,7 +69,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
     }
 
     if (vehicle == null) {
-      throw StateError('Arac kaydi bulunamadi.');
+      throw StateError('Araç kaydı bulunamadı.');
     }
 
     return _PdfData(service: service, vehicle: vehicle);
@@ -121,10 +122,12 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  'PDF hazirlanamadi: ${snap.error}',
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: AppErrorBanner(
+                    message:
+                        'PDF hazırlanamadı: ${snap.error}',
+                  ),
                 ),
               ),
             );
@@ -135,7 +138,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
             children: [
               Expanded(
                 child: Container(
-                  color: const Color(0xFFF5F7FB),
+                  color: AppColors.surfaceMuted,
                   padding: const EdgeInsets.all(16),
                   child: PdfPreview(
                     canChangeOrientation: false,
@@ -175,7 +178,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                     FilledButton.icon(
                       onPressed: _working ? null : () => _printPdf(data),
                       icon: const Icon(Icons.print),
-                      label: const Text('Yazdir'),
+                      label: const Text('Yazdır'),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(52),
                       ),
@@ -186,7 +189,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                     ],
                     const SizedBox(height: 24),
                     Text(
-                      'Fis No: ${data.service.id}',
+                      'Fiş no: ${data.service.id}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(

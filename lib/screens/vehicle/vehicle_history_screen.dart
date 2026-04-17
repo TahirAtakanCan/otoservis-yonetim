@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
+import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
 class VehicleHistoryScreen extends StatefulWidget {
@@ -65,7 +67,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = 'Veriler yüklenirken bir hata oluştu: $e';
         _loading = false;
       });
     }
@@ -111,9 +113,6 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
   Widget build(BuildContext context) {
     final vp = context.watch<VehicleProvider>();
     final v = _vehicle;
-    final money = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-    final dateFmt = DateFormat.yMMMd('tr').add_Hm();
-
     return Scaffold(
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,21 +120,27 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
           const AppSidebar(),
           Expanded(
             child: ColoredBox(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.surfaceMuted,
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null && v == null
                       ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(_error!, style: const TextStyle(color: Colors.red)),
-                              const SizedBox(height: 16),
-                              FilledButton(
-                                onPressed: () => context.go('/vehicle-search'),
-                                child: const Text('Plaka aramaya dön'),
-                              ),
-                            ],
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 520),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AppErrorBanner(
+                                  message: _error!,
+                                  onRetry: _load,
+                                ),
+                                const SizedBox(height: 16),
+                                FilledButton(
+                                  onPressed: () => context.go('/vehicle-search'),
+                                  child: const Text('Plaka aramaya dön'),
+                                ),
+                              ],
+                            ),
                           ),
                         )
                       : v == null
@@ -259,7 +264,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                             vertical: 8,
                                           ),
                                           title: Text(
-                                            dateFmt.format(r.date),
+                                            AppFormatters.formatDateTime(r.date),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -281,7 +286,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                                 CrossAxisAlignment.end,
                                             children: [
                                               Text(
-                                                money.format(r.grandTotal),
+                                                AppFormatters.formatLira(r.grandTotal),
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 15,

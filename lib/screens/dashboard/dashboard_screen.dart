@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
 import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -75,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = 'Veriler yüklenirken bir hata oluştu: $e';
         _loading = false;
       });
     }
@@ -106,7 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final userName = context.watch<AuthProvider>().currentUser?.name ?? '';
     final greeting = userName.isNotEmpty ? 'Hoş geldiniz, $userName' : 'Hoş geldiniz';
-    final dateStr = DateFormat.yMMMMEEEEd('tr').format(DateTime.now());
+    final dateStr = AppFormatters.formatDateLong(DateTime.now());
 
     return Scaffold(
       body: Row(
@@ -115,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const AppSidebar(),
           Expanded(
             child: ColoredBox(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.surfaceMuted,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(28),
                 child: Column(
@@ -138,9 +139,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          'Veriler yüklenirken hata: $_error',
-                          style: const TextStyle(color: Colors.red),
+                        child: AppErrorBanner(
+                          message: _error!,
+                          onRetry: _loadStats,
                         ),
                       ),
                     if (_loading)
@@ -187,10 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 width: cardWidth.clamp(220, maxW),
                                 child: _SummaryCard(
                                   title: 'Bugünkü ciro',
-                                  value: NumberFormat.currency(
-                                    locale: 'tr_TR',
-                                    symbol: '₺',
-                                  ).format(_revenueToday),
+                                  value: AppFormatters.formatLira(_revenueToday),
                                   subtitle: 'Tamamlanan kayıtlar toplamı',
                                   icon: Icons.payments_outlined,
                                   color: const Color(0xFF059669),

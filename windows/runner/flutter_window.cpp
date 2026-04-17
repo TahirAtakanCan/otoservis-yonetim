@@ -1,5 +1,6 @@
 #include "flutter_window.h"
 
+#include <cmath>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -59,6 +60,15 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     if (result) {
       return *result;
     }
+  }
+
+  if (message == WM_GETMINMAXINFO) {
+    UINT dpi = GetDpiForWindow(hwnd);
+    double scale = dpi / 96.0;
+    auto* mmi = reinterpret_cast<MINMAXINFO*>(lparam);
+    mmi->ptMinTrackSize.x = static_cast<LONG>(std::lround(1280.0 * scale));
+    mmi->ptMinTrackSize.y = static_cast<LONG>(std::lround(720.0 * scale));
+    return 0;
   }
 
   switch (message) {

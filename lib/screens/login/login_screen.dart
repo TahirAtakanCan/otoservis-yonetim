@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,9 +35,14 @@ class _LoginScreenState extends State<LoginScreen> {
             _passwordController.text,
           );
     } on FirebaseAuthException catch (e) {
-      setState(() => _errorMessage = e.message ?? 'Giris sirasinda hata olustu.');
+      setState(() {
+        _errorMessage =
+            e.message ?? 'Giriş sırasında bir hata oluştu. Bilgilerinizi kontrol edin.';
+      });
     } catch (_) {
-      setState(() => _errorMessage = 'Beklenmeyen bir hata olustu.');
+      setState(() {
+        _errorMessage = 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';
+      });
     }
   }
 
@@ -44,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5F9),
+      backgroundColor: AppColors.surfaceMuted,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
@@ -59,35 +66,35 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Expanded(
                     child: Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0F172A),
-                        borderRadius: BorderRadius.horizontal(
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryNavy,
+                        borderRadius: const BorderRadius.horizontal(
                           left: Radius.circular(20),
                         ),
                       ),
                       padding: const EdgeInsets.all(40),
-                      child: const Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.car_repair,
                             color: Colors.white,
                             size: 60,
                           ),
-                          SizedBox(height: 20),
+                          const SizedBox(height: 20),
                           Text(
-                            'OTO SERVIS',
-                            style: TextStyle(
+                            BusinessInfo.name.toUpperCase(),
+                            style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 36,
+                              fontSize: 32,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
+                              letterSpacing: 1.2,
                             ),
                           ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Yonetim Paneli',
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Yönetim paneli',
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 18,
@@ -110,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              'Giris Yap',
+                              'Giriş yap',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w700,
@@ -136,38 +143,40 @@ class _LoginScreenState extends State<LoginScreen> {
                               controller: _passwordController,
                               obscureText: true,
                               decoration: const InputDecoration(
-                                labelText: 'Sifre',
+                                labelText: 'Şifre',
                                 border: OutlineInputBorder(),
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Sifre gerekli';
+                                  return 'Şifre gerekli';
                                 }
                                 return null;
                               },
                             ),
                             if (_errorMessage != null) ...[
                               const SizedBox(height: 14),
-                              Text(
-                                _errorMessage!,
-                                style: const TextStyle(color: Colors.red),
+                              AppErrorBanner(
+                                message: _errorMessage!,
+                                onRetry: _onLoginPressed,
                               ),
                             ],
                             const SizedBox(height: 20),
                             SizedBox(
                               height: 48,
-                              child: ElevatedButton(
-                                onPressed:
-                                    authProvider.isLoading ? null : _onLoginPressed,
+                              child: FilledButton(
+                                onPressed: authProvider.isLoading
+                                    ? null
+                                    : _onLoginPressed,
                                 child: authProvider.isLoading
                                     ? const SizedBox(
                                         height: 18,
                                         width: 18,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
+                                          color: Colors.white,
                                         ),
                                       )
-                                    : const Text('Giris Yap'),
+                                    : const Text('Giriş yap'),
                               ),
                             ),
                           ],
@@ -184,4 +193,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

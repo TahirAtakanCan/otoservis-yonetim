@@ -31,6 +31,11 @@ class InventoryProvider extends ChangeNotifier {
   String? _inventoryError;
   String? get inventoryError => _inventoryError;
 
+  /// Abonelik hata verirse yeniden denemek için.
+  void retryInventoryStream() {
+    _listenInventory();
+  }
+
   void _listenInventory() {
     _inventorySub?.cancel();
     _inventoryLoading = true;

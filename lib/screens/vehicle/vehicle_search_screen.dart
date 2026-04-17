@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
+import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class VehicleSearchScreen extends StatefulWidget {
 class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
   final _plateController = TextEditingController();
   bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -44,7 +47,10 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final vehicle = await vp.fetchVehicleByPlate(plate);
       if (!mounted) return;
@@ -79,6 +85,12 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
       if (!mounted || create != true) return;
 
       await _showNewVehicleDialog(plate);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Plaka sorgulanırken bir hata oluştu: $e';
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -213,7 +225,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kayıt hatası: $e')),
+        SnackBar(content: Text('Kayıt sırasında hata: $e')),
       );
     } finally {
       ownerNameCtrl.dispose();
@@ -233,7 +245,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
           const AppSidebar(),
           Expanded(
             child: ColoredBox(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.surfaceMuted,
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(32),
@@ -242,6 +254,13 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        if (_error != null) ...[
+                          AppErrorBanner(
+                            message: _error!,
+                            onRetry: _onSearch,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         Text(
                           'Plaka ile araç ara',
                           style: Theme.of(context).textTheme.headlineMedium

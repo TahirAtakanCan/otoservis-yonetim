@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:otoservis_app/app.dart';
-import 'package:otoservis_app/main.dart';
 import 'package:otoservis_app/models/app_user.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/providers/connectivity_notifier.dart';
+import 'package:otoservis_app/utils/constants.dart';
 
 class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   FakeAuthProvider({this.currentUser});
@@ -32,14 +33,21 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MultiProvider(
-        providers: [Provider<AuthProvider>.value(value: FakeAuthProvider())],
+        providers: [
+          ChangeNotifierProvider<ConnectivityNotifier>(
+            create: (_) => ConnectivityNotifier(),
+          ),
+          ChangeNotifierProvider<AuthProvider>.value(
+            value: FakeAuthProvider(),
+          ),
+        ],
         child: const App(),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Giris Yap'), findsOneWidget);
-    expect(find.text('OTO SERVIS'), findsOneWidget);
+    expect(find.text('Giriş yap'), findsWidgets);
+    expect(find.text(BusinessInfo.name.toUpperCase()), findsOneWidget);
   });
 }

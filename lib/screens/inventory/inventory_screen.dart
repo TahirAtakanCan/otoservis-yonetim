@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/providers/inventory_provider.dart';
 import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
+import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -54,8 +55,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final minCtrl = TextEditingController(
       text: existing != null ? '${existing.minStockAlert}' : '',
     );
-    var category = existing?.category ?? InventoryCategories.all.first;
-    if (existing != null && !InventoryCategories.all.contains(existing.category)) {
+    var category = existing?.category ?? PartCategories.all.first;
+    if (existing != null && !PartCategories.all.contains(existing.category)) {
       category = 'Diğer';
     }
     final formKey = GlobalKey<FormState>();
@@ -90,7 +91,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           labelText: 'Kategori',
                           border: OutlineInputBorder(),
                         ),
-                        items: InventoryCategories.all
+                        items: PartCategories.all
                             .map(
                               (c) => DropdownMenuItem(value: c, child: Text(c)),
                             )
@@ -384,7 +385,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final inv = context.watch<InventoryProvider>();
-    final money = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
     final rows = _filtered(inv.allItems);
 
     return Scaffold(
@@ -394,7 +394,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           const AppSidebar(),
           Expanded(
             child: ColoredBox(
-              color: const Color(0xFFF1F5F9),
+              color: AppColors.surfaceMuted,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -442,7 +442,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 value: null,
                                 child: Text('Tümü'),
                               ),
-                              ...InventoryCategories.all.map(
+                              ...PartCategories.all.map(
                                 (c) => DropdownMenuItem(
                                   value: c,
                                   child: Text(c),
@@ -473,9 +473,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ? Center(
                                 child: Padding(
                                   padding: const EdgeInsets.all(24),
-                                  child: Text(
-                                    inv.inventoryError!,
-                                    style: const TextStyle(color: Colors.red),
+                                  child: AppErrorBanner(
+                                    message:
+                                        'Stok listesi yüklenemedi: ${inv.inventoryError}',
+                                    onRetry: () =>
+                                        inv.retryInventoryStream(),
                                   ),
                                 ),
                               )
@@ -537,7 +539,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                                 ),
                                                 DataCell(
                                                   Text(
-                                                    money.format(item.unitPrice),
+                                                    AppFormatters.formatLira(
+                                                      item.unitPrice,
+                                                    ),
                                                   ),
                                                 ),
                                                 DataCell(
