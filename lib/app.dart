@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
 import 'package:otoservis_app/screens/dashboard/dashboard_screen.dart';
 import 'package:otoservis_app/screens/login/login_screen.dart';
+import 'package:otoservis_app/screens/pdf/pdf_preview_screen.dart';
 import 'package:otoservis_app/screens/reports/reports_screen.dart';
 import 'package:otoservis_app/screens/service/service_entry_screen.dart';
 import 'package:otoservis_app/screens/vehicle/vehicle_history_screen.dart';
@@ -73,6 +74,13 @@ class App extends StatelessWidget {
         GoRoute(
           path: '/reports',
           builder: (context, state) => const ReportsScreen(),
+        ),
+        GoRoute(
+          path: '/pdf/preview/:serviceId',
+          builder: (context, state) {
+            final id = state.pathParameters['serviceId'] ?? '';
+            return PdfPreviewScreen(serviceId: id);
+          },
         ),
       ],
     );
