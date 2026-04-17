@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/screens/dashboard/dashboard_screen.dart';
 import 'package:otoservis_app/screens/login/login_screen.dart';
+import 'package:otoservis_app/screens/reports/reports_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -62,6 +64,10 @@ class App extends StatelessWidget {
           path: '/inventory',
           builder: (context, state) => const InventoryScreen(),
         ),
+        GoRoute(
+          path: '/reports',
+          builder: (context, state) => const ReportsScreen(),
+        ),
       ],
     );
 
@@ -72,17 +78,6 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
       ),
       routerConfig: router,
-    );
-  }
-}
-
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Dashboard Screen')),
     );
   }
 }
