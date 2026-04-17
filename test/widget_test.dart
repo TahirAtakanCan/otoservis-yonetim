@@ -1,30 +1,45 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
+import 'package:otoservis_app/app.dart';
 import 'package:otoservis_app/main.dart';
+import 'package:otoservis_app/models/app_user.dart';
+import 'package:otoservis_app/providers/auth_provider.dart';
+
+class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
+  FakeAuthProvider({this.currentUser});
+
+  @override
+  final AppUser? currentUser;
+
+  @override
+  bool get isAuthenticated => currentUser != null;
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  Future<void> signIn(String email, String password) async {}
+
+  @override
+  Future<void> signOut() async {}
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('shows login screen when user is not authenticated', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [Provider<AuthProvider>.value(value: FakeAuthProvider())],
+        child: const App(),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Giris Yap'), findsOneWidget);
+    expect(find.text('OTO SERVIS'), findsOneWidget);
   });
 }

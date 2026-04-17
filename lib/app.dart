@@ -1,1 +1,138 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/screens/login/login_screen.dart';
+
+class App extends StatelessWidget {
+  const App({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+
+    final router = GoRouter(
+      initialLocation: '/',
+      refreshListenable: authProvider,
+      redirect: (context, state) {
+        final isLoggedIn = authProvider.currentUser != null;
+        final isLoginRoute = state.matchedLocation == '/login';
+        final isInventoryRoute = state.matchedLocation == '/inventory';
+        final isAdmin = authProvider.currentUser?.role == 'admin';
+
+        if (!isLoggedIn) {
+          return isLoginRoute ? null : '/login';
+        }
+
+        if (isLoginRoute) {
+          return '/';
+        }
+
+        if (isInventoryRoute && !isAdmin) {
+          return '/';
+        }
+
+        return null;
+      },
+      routes: [
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const DashboardScreen(),
+        ),
+        GoRoute(
+          path: '/vehicle-search',
+          builder: (context, state) => const VehicleSearchScreen(),
+        ),
+        GoRoute(
+          path: '/vehicle/:plate/history',
+          builder: (context, state) {
+            final plate = state.pathParameters['plate'] ?? '';
+            return VehicleHistoryScreen(plate: plate);
+          },
+        ),
+        GoRoute(
+          path: '/service/new',
+          builder: (context, state) => const ServiceEntryScreen(),
+        ),
+        GoRoute(
+          path: '/inventory',
+          builder: (context, state) => const InventoryScreen(),
+        ),
+      ],
+    );
+
+    return MaterialApp.router(
+      title: 'Otoservis App',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      routerConfig: router,
+    );
+  }
+}
+
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Dashboard Screen')),
+    );
+  }
+}
+
+class VehicleSearchScreen extends StatelessWidget {
+  const VehicleSearchScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Vehicle Search Screen')),
+    );
+  }
+}
+
+class VehicleHistoryScreen extends StatelessWidget {
+  const VehicleHistoryScreen({
+    super.key,
+    required this.plate,
+  });
+
+  final String plate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(child: Text('Vehicle History: $plate')),
+    );
+  }
+}
+
+class ServiceEntryScreen extends StatelessWidget {
+  const ServiceEntryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Service Entry Screen')),
+    );
+  }
+}
+
+class InventoryScreen extends StatelessWidget {
+  const InventoryScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Text('Inventory Screen')),
+    );
+  }
+}
 
