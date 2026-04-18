@@ -36,6 +36,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _error = null;
     });
 
+    final auth = context.read<AuthProvider>();
+    if (!auth.authStateKnown || auth.currentUser == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+      return;
+    }
+
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
     final end = start.add(const Duration(days: 1));

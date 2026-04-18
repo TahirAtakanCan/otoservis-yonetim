@@ -13,22 +13,40 @@ import 'package:otoservis_app/screens/vehicle/vehicle_history_screen.dart';
 import 'package:otoservis_app/screens/vehicle/vehicle_search_screen.dart';
 import 'package:otoservis_app/utils/constants.dart';
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
   const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  GoRouter? _router;
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final connectivity = context.watch<ConnectivityNotifier>();
 
-    final router = GoRouter(
+    _router ??= GoRouter(
       initialLocation: '/',
       refreshListenable: authProvider,
       redirect: (context, state) {
-        final isLoggedIn = authProvider.currentUser != null;
-        final isLoginRoute = state.matchedLocation == '/login';
-        final isInventoryRoute = state.matchedLocation == '/inventory';
-        final isAdmin = authProvider.currentUser?.role == 'admin';
+        final auth = context.read<AuthProvider>();
+        final loc = state.matchedLocation;
+
+        if (!auth.authStateKnown) {
+          return loc == '/loading' ? null : '/loading';
+        }
+
+        if (loc == '/loading') {
+          return auth.currentUser != null ? '/' : '/login';
+        }
+
+        final isLoggedIn = auth.currentUser != null;
+        final isLoginRoute = loc == '/login';
+        final isInventoryRoute = loc == '/inventory';
+        final isAdmin = auth.currentUser?.role == 'admin';
 
         if (!isLoggedIn) {
           return isLoginRoute ? null : '/login';
@@ -45,6 +63,10 @@ class App extends StatelessWidget {
         return null;
       },
       routes: [
+        GoRoute(
+          path: '/loading',
+          builder: (context, state) => const _AuthLoadingScreen(),
+        ),
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
@@ -113,7 +135,7 @@ class App extends StatelessWidget {
           ),
         ),
       ),
-      routerConfig: router,
+      routerConfig: _router!,
       builder: (context, child) {
         return Column(
           children: [
@@ -150,6 +172,19 @@ class App extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _AuthLoadingScreen extends StatelessWidget {
+  const _AuthLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }

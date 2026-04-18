@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -51,6 +48,17 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  /// Web (Chrome). Değerleri Firebase Console → Project settings → Your apps → Web uygulamasından alın.
+  /// Şimdilik Windows ile aynı projedeki web kaydı kullanılıyor; ayrı bir Web app eklediyseniz `appId` vb. güncelleyin.
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyA9r0zToU8R00NuLGc11hxur4dSJcYnghs',
+    appId: '1:658591153273:web:813a7e7e50f83b81cc68a8',
+    messagingSenderId: '658591153273',
+    projectId: 'otoservis-yonetim',
+    authDomain: 'otoservis-yonetim.firebaseapp.com',
+    storageBucket: 'otoservis-yonetim.firebasestorage.app',
+  );
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyA9r0zToU8R00NuLGc11hxur4dSJcYnghs',

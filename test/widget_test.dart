@@ -21,6 +21,9 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   bool get isLoading => false;
 
   @override
+  bool get authStateKnown => true;
+
+  @override
   Future<void> signIn(String email, String password) async {}
 
   @override

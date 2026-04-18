@@ -1,17 +1,35 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/utils/constants.dart';
 
 class InventoryProvider extends ChangeNotifier {
-  InventoryProvider({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance {
-    _listenInventory();
+  InventoryProvider({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance {
+    _authSub = _auth.authStateChanges().listen(
+      (user) {
+        if (user != null) {
+          _listenInventory();
+        } else {
+          _stopInventoryStream();
+        }
+      },
+      onError: (Object e, StackTrace stack) {
+        debugPrint('INVENTORY AUTH STREAM HATASI: $e');
+        debugPrint('STACK: $stack');
+      },
+    );
   }
 
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
+  StreamSubscription<User?>? _authSub;
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _inventorySub;
 
@@ -33,7 +51,19 @@ class InventoryProvider extends ChangeNotifier {
 
   /// Abonelik hata verirse yeniden denemek için.
   void retryInventoryStream() {
+    if (_auth.currentUser == null) {
+      return;
+    }
     _listenInventory();
+  }
+
+  void _stopInventoryStream() {
+    _inventorySub?.cancel();
+    _inventorySub = null;
+    _allItems = [];
+    _inventoryLoading = false;
+    _inventoryError = null;
+    notifyListeners();
   }
 
   void _listenInventory() {
@@ -70,6 +100,7 @@ class InventoryProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _inventorySub?.cancel();
     super.dispose();
   }
