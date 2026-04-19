@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
 import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/widgets/vehicle/add_vehicle_dialog.dart';
 
 /// Sol sabit sidebar (220px). Rol bazlı menü ve çıkış.
 class AppSidebar extends StatelessWidget {
@@ -56,10 +57,32 @@ class AppSidebar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               children: [
                 _SidebarTile(
+                  icon: Icons.home_outlined,
+                  label: 'Ana Sayfa',
+                  selected: location == '/',
+                  onTap: () => context.go('/'),
+                ),
+                _SidebarTile(
                   icon: Icons.search,
                   label: 'Araç Ara',
                   selected: _isVehicleSectionActive(location),
                   onTap: () => context.go('/vehicle-search'),
+                ),
+                _SidebarTile(
+                  icon: Icons.add_circle_outline,
+                  label: 'Araç Ekle',
+                  selected: false,
+                  onTap: () async {
+                    final vehicle = await showAddVehicleDialog(context);
+                    if (vehicle == null || !context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${vehicle.plate} plakalı araç kaydedildi.',
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 if (showInventory)
                   _SidebarTile(
@@ -98,10 +121,7 @@ class AppSidebar extends StatelessWidget {
                   _roleLabel(role),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
                 ),
               ],
             ),

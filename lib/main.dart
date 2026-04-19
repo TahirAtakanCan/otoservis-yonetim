@@ -28,51 +28,54 @@ Future<void> main() async {
     return true;
   };
 
-  runZonedGuarded(() async {
-    try {
-      // Web (ve bazı ortamlarda) DateFormat('...', 'tr_TR') için gerekli.
-      await initializeDateFormatting('tr_TR');
+  runZonedGuarded(
+    () async {
+      try {
+        // Web (ve bazı ortamlarda) DateFormat('...', 'tr_TR') için gerekli.
+        await initializeDateFormatting('tr_TR', null);
 
-      debugPrint('ADIM 1: Firebase başlatılıyor...');
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      debugPrint('ADIM 2: Firebase başlatıldı');
+        debugPrint('ADIM 1: Firebase başlatılıyor...');
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+        debugPrint('ADIM 2: Firebase başlatıldı');
 
-      FirebaseFirestore.instance.settings = const Settings(
-        persistenceEnabled: true,
-      );
-      debugPrint('ADIM 3: Firestore ayarları yapıldı');
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: true,
+        );
+        debugPrint('ADIM 3: Firestore ayarları yapıldı');
 
-      runApp(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<ConnectivityNotifier>(
-              create: (_) => ConnectivityNotifier(),
-            ),
-            ChangeNotifierProvider<AuthProvider>(
-              create: (_) => AuthProvider(),
-            ),
-            ChangeNotifierProvider<VehicleProvider>(
-              create: (_) => VehicleProvider(),
-            ),
-            ChangeNotifierProvider<InventoryProvider>(
-              create: (_) => InventoryProvider(),
-            ),
-            ChangeNotifierProvider<ServiceProvider>(
-              create: (_) => ServiceProvider(),
-            ),
-          ],
-          child: const App(),
-        ),
-      );
-      debugPrint('ADIM 4: App başlatıldı');
-    } catch (e, stack) {
-      debugPrint('KRITIK HATA: $e');
-      debugPrint('STACK TRACE: $stack');
-    }
-  }, (error, stack) {
-    debugPrint('ZONE HATASI: $error');
-    debugPrint('STACK: $stack');
-  });
+        runApp(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<ConnectivityNotifier>(
+                create: (_) => ConnectivityNotifier(),
+              ),
+              ChangeNotifierProvider<AuthProvider>(
+                create: (_) => AuthProvider(),
+              ),
+              ChangeNotifierProvider<VehicleProvider>(
+                create: (_) => VehicleProvider(),
+              ),
+              ChangeNotifierProvider<InventoryProvider>(
+                create: (_) => InventoryProvider(),
+              ),
+              ChangeNotifierProvider<ServiceProvider>(
+                create: (_) => ServiceProvider(),
+              ),
+            ],
+            child: const App(),
+          ),
+        );
+        debugPrint('ADIM 4: App başlatıldı');
+      } catch (e, stack) {
+        debugPrint('KRITIK HATA: $e');
+        debugPrint('STACK TRACE: $stack');
+      }
+    },
+    (error, stack) {
+      debugPrint('ZONE HATASI: $error');
+      debugPrint('STACK: $stack');
+    },
+  );
 }

@@ -7,6 +7,7 @@ import 'package:otoservis_app/utils/constants.dart';
 import 'package:otoservis_app/utils/formatters.dart';
 import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
+import 'package:otoservis_app/widgets/vehicle/add_vehicle_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -52,11 +53,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final endTs = Timestamp.fromDate(end);
 
     try {
-      final serviceQuery = await _firestore
-          .collection(FirestoreCollections.serviceRecords)
-          .where('date', isGreaterThanOrEqualTo: startTs)
-          .where('date', isLessThan: endTs)
-          .get();
+      final serviceQuery =
+          await _firestore
+              .collection(FirestoreCollections.serviceRecords)
+              .where('date', isGreaterThanOrEqualTo: startTs)
+              .where('date', isLessThan: endTs)
+              .get();
 
       double revenue = 0;
       for (final doc in serviceQuery.docs) {
@@ -115,7 +117,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final userName = context.watch<AuthProvider>().currentUser?.name ?? '';
-    final greeting = userName.isNotEmpty ? 'Hoş geldiniz, $userName' : 'Hoş geldiniz';
+    final greeting =
+        userName.isNotEmpty ? 'Hoş geldiniz, $userName' : 'Hoş geldiniz';
     final dateStr = AppFormatters.formatDateLong(DateTime.now());
 
     return Scaffold(
@@ -131,18 +134,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      greeting,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            greeting,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final vehicle = await showAddVehicleDialog(context);
+                            if (vehicle == null || !context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${vehicle.plate} plakalı araç kaydedildi.',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Araç Ekle'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       dateStr,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.black54,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: Colors.black54),
                     ),
                     const SizedBox(height: 28),
                     if (_error != null)
@@ -164,9 +189,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final maxW = constraints.maxWidth;
-                          final cardWidth = maxW > 900
-                              ? (maxW - 32) / 3
-                              : (maxW > 520 ? (maxW - 16) / 2 : maxW);
+                          final cardWidth =
+                              maxW > 900
+                                  ? (maxW - 32) / 3
+                                  : (maxW > 520 ? (maxW - 16) / 2 : maxW);
                           return Wrap(
                             spacing: 16,
                             runSpacing: 16,
@@ -197,7 +223,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 width: cardWidth.clamp(220, maxW),
                                 child: _SummaryCard(
                                   title: 'Bugünkü ciro',
-                                  value: AppFormatters.formatLira(_revenueToday),
+                                  value: AppFormatters.formatLira(
+                                    _revenueToday,
+                                  ),
                                   subtitle: 'Tamamlanan kayıtlar toplamı',
                                   icon: Icons.payments_outlined,
                                   color: const Color(0xFF059669),
@@ -267,23 +295,23 @@ class _SummaryCard extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 subtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.black45,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.black45),
               ),
             ],
           ),

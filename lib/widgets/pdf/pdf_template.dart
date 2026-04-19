@@ -5,49 +5,58 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
-import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
+import 'package:otoservis_app/utils/pdf_branding.dart';
 
 class PdfTemplate {
   static Future<Uint8List> buildServiceSlip({
     required ServiceRecord service,
     required Vehicle vehicle,
   }) async {
-    final doc = pw.Document();
-    final dateFmt = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR');
+    final branding = await PdfBranding.loadBundle();
+    final doc = pw.Document(theme: branding.theme);
     final moneyFmt = NumberFormat.currency(
       locale: 'tr_TR',
-      symbol: 'TL',
+      symbol: '₺',
       decimalDigits: 2,
     );
 
     doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4.copyWith(
-          marginTop: 20 * PdfPageFormat.mm,
-          marginBottom: 20 * PdfPageFormat.mm,
-          marginLeft: 15 * PdfPageFormat.mm,
-          marginRight: 15 * PdfPageFormat.mm,
-        ),
-        build: (context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _buildHeader(
-                service: service,
-                dateText: dateFmt.format(service.date),
-              ),
-              pw.SizedBox(height: 14),
-              _buildVehicleInfo(vehicle),
-              pw.SizedBox(height: 16),
-              _buildPartsTable(service.parts, moneyFmt),
-              pw.SizedBox(height: 12),
-              _buildLaborTable(service.laborItems, moneyFmt),
-              pw.Spacer(),
-              _buildTotalBlock(service, moneyFmt),
-              pw.SizedBox(height: 16),
-              _buildFooter(service),
-            ],
-          );
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.fromLTRB(24, 24, 24, 24),
+        build: (_) {
+          return [
+            PdfBranding.buildPremiumHeader(
+              bundle: branding,
+              title: 'SERVİS FİŞİ',
+              date: service.date,
+            ),
+            pw.SizedBox(height: 10),
+            _buildMetaCard(service: service, branding: branding),
+            pw.SizedBox(height: 12),
+            _buildVehicleInfoCard(vehicle: vehicle, branding: branding),
+            pw.SizedBox(height: 14),
+            _buildPartsSection(
+              parts: service.parts,
+              moneyFmt: moneyFmt,
+              branding: branding,
+            ),
+            pw.SizedBox(height: 12),
+            _buildLaborSection(
+              laborItems: service.laborItems,
+              moneyFmt: moneyFmt,
+              branding: branding,
+            ),
+            pw.SizedBox(height: 14),
+            _buildTotalBlock(
+              service: service,
+              moneyFmt: moneyFmt,
+              branding: branding,
+            ),
+            pw.SizedBox(height: 14),
+            PdfBranding.buildPremiumFooter(branding),
+          ];
         },
       ),
     );
@@ -55,118 +64,145 @@ class PdfTemplate {
     return doc.save();
   }
 
-  static pw.Widget _buildHeader({
+  static pw.Widget _buildMetaCard({
     required ServiceRecord service,
-    required String dateText,
+    required PdfBrandingBundle branding,
   }) {
-    return pw.Column(
-      children: [
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    BusinessInfo.name,
-                    style: pw.TextStyle(
-                      fontSize: 18,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    '${BusinessInfo.address}\nTel: ${BusinessInfo.phone}',
-                    style: pw.TextStyle(
-                      fontSize: 9,
-                      color: PdfColors.grey700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(width: 20),
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.end,
-              children: [
-                pw.Text(
-                  'SERVIS FISI',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                pw.SizedBox(height: 6),
-                pw.Text(
-                  'Fis No: ${service.id}',
-                  style: const pw.TextStyle(fontSize: 10),
-                ),
-                pw.Text(
-                  'Tarih: $dateText',
-                  style: const pw.TextStyle(fontSize: 10),
-                ),
-              ],
-            ),
-          ],
-        ),
-        pw.SizedBox(height: 10),
-        pw.Divider(thickness: 0.8, color: PdfColors.grey500),
-      ],
-    );
-  }
-
-  static pw.Widget _buildVehicleInfo(Vehicle vehicle) {
     return pw.Container(
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey400, width: 0.6),
-        borderRadius: pw.BorderRadius.circular(4),
-      ),
       padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        color: PdfBranding.zebra,
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: PdfBranding.border, width: 1),
+      ),
       child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                _infoLine('Plaka', vehicle.plate),
-                _infoLine('Arac', '${vehicle.brand} ${vehicle.model} ${vehicle.year}'),
-              ],
-            ),
-          ),
-          pw.SizedBox(width: 24),
-          pw.Expanded(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                _infoLine('Musteri', vehicle.ownerName),
-                _infoLine('Telefon', vehicle.ownerPhone),
-              ],
-            ),
+          _metaItem('Fiş No', service.id, branding),
+          _metaItem('Teknisyen', service.technicianName, branding),
+          _metaItem(
+            'Kayıt Tarihi',
+            DateFormat('dd MMMM yyyy', 'tr_TR').format(service.date),
+            branding,
           ),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildPartsTable(
-    List<ServicePart> parts,
-    NumberFormat moneyFmt,
+  static pw.Widget _metaItem(
+    String label,
+    String value,
+    PdfBrandingBundle branding,
   ) {
-    final headerStyle = pw.TextStyle(
-      color: PdfColors.white,
-      fontWeight: pw.FontWeight.bold,
-      fontSize: 10,
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          label,
+          style: pw.TextStyle(
+            font: branding.bold,
+            fontSize: 9,
+            color: PdfBranding.navy,
+          ),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Text(
+          value,
+          style: pw.TextStyle(font: branding.regular, fontSize: 9.5),
+        ),
+      ],
     );
-    final bodyStyle = const pw.TextStyle(fontSize: 9.5);
+  }
+
+  static pw.Widget _buildVehicleInfoCard({
+    required Vehicle vehicle,
+    required PdfBrandingBundle branding,
+  }) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: PdfBranding.border, width: 1),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'Araç ve Müşteri Bilgileri',
+            style: pw.TextStyle(
+              font: branding.bold,
+              fontSize: 12,
+              color: PdfBranding.navy,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _infoLine('Plaka', vehicle.plate, branding),
+                    _infoLine(
+                      'Araç',
+                      '${vehicle.brand} ${vehicle.model} ${vehicle.year}',
+                      branding,
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 20),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _infoLine('Müşteri', vehicle.ownerName, branding),
+                    _infoLine('Telefon', vehicle.ownerPhone, branding),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildPartsSection({
+    required List<ServicePart> parts,
+    required NumberFormat moneyFmt,
+    required PdfBrandingBundle branding,
+  }) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Parçalar', branding),
+        pw.SizedBox(height: 6),
+        _partsTable(parts: parts, moneyFmt: moneyFmt, branding: branding),
+      ],
+    );
+  }
+
+  static pw.Widget _partsTable({
+    required List<ServicePart> parts,
+    required NumberFormat moneyFmt,
+    required PdfBrandingBundle branding,
+  }) {
+    final headerStyle = pw.TextStyle(
+      font: branding.bold,
+      color: PdfColors.white,
+      fontSize: 9.5,
+    );
+    final bodyStyle = pw.TextStyle(font: branding.regular, fontSize: 9);
 
     final rows = <pw.TableRow>[
       pw.TableRow(
-        decoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+        decoration: pw.BoxDecoration(color: PdfBranding.navy),
         children: [
-          _cell('Parca Adi', headerStyle, alignRight: false),
+          _cell('Parça Adı', headerStyle, alignRight: false),
           _cell('Adet', headerStyle),
           _cell('Birim Fiyat', headerStyle),
           _cell('Toplam', headerStyle),
@@ -177,8 +213,9 @@ class PdfTemplate {
     if (parts.isEmpty) {
       rows.add(
         pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.white),
           children: [
-            _cell('Parca yok', bodyStyle, alignRight: false),
+            _cell('Parça kaydı yok', bodyStyle, alignRight: false),
             _cell('-', bodyStyle),
             _cell('-', bodyStyle),
             _cell('-', bodyStyle),
@@ -187,61 +224,51 @@ class PdfTemplate {
       );
     } else {
       for (var i = 0; i < parts.length; i++) {
-        final p = parts[i];
+        final part = parts[i];
         rows.add(
           pw.TableRow(
             decoration: pw.BoxDecoration(
-              color: i.isEven ? PdfColors.grey100 : PdfColors.white,
+              color: i.isEven ? PdfColors.white : PdfBranding.zebra,
             ),
             children: [
-              _cell(p.partName, bodyStyle, alignRight: false),
-              _cell('${p.quantity}', bodyStyle),
-              _cell(moneyFmt.format(p.unitPrice), bodyStyle),
-              _cell(moneyFmt.format(p.totalPrice), bodyStyle),
+              _cell(part.partName, bodyStyle, alignRight: false),
+              _cell('${part.quantity}', bodyStyle),
+              _cell(moneyFmt.format(part.unitPrice), bodyStyle),
+              _cell(moneyFmt.format(part.totalPrice), bodyStyle),
             ],
           ),
         );
       }
     }
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          'PARCALAR',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
-        ),
-        pw.SizedBox(height: 6),
-        pw.Table(
-          border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-          columnWidths: const {
-            0: pw.FlexColumnWidth(4),
-            1: pw.FlexColumnWidth(1.2),
-            2: pw.FlexColumnWidth(2),
-            3: pw.FlexColumnWidth(2),
-          },
-          children: rows,
-        ),
-      ],
+    return _buildRoundedTable(
+      rows: rows,
+      columnWidths: const {
+        0: pw.FlexColumnWidth(4),
+        1: pw.FlexColumnWidth(1.2),
+        2: pw.FlexColumnWidth(2),
+        3: pw.FlexColumnWidth(2),
+      },
     );
   }
 
-  static pw.Widget _buildLaborTable(
-    List<LaborItem> laborItems,
-    NumberFormat moneyFmt,
-  ) {
+  static pw.Widget _buildLaborSection({
+    required List<LaborItem> laborItems,
+    required NumberFormat moneyFmt,
+    required PdfBrandingBundle branding,
+  }) {
     final headerStyle = pw.TextStyle(
+      font: branding.bold,
       color: PdfColors.white,
-      fontWeight: pw.FontWeight.bold,
-      fontSize: 10,
+      fontSize: 9.5,
     );
-    final bodyStyle = const pw.TextStyle(fontSize: 9.5);
+    final bodyStyle = pw.TextStyle(font: branding.regular, fontSize: 9);
 
     final rows = <pw.TableRow>[
       pw.TableRow(
-        decoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+        decoration: pw.BoxDecoration(color: PdfBranding.navy),
         children: [
-          _cell('Islem', headerStyle, alignRight: false),
+          _cell('İşçilik', headerStyle, alignRight: false),
           _cell('Tutar', headerStyle),
         ],
       ),
@@ -250,23 +277,24 @@ class PdfTemplate {
     if (laborItems.isEmpty) {
       rows.add(
         pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.white),
           children: [
-            _cell('Iscilik yok', bodyStyle, alignRight: false),
+            _cell('İşçilik kaydı yok', bodyStyle, alignRight: false),
             _cell('-', bodyStyle),
           ],
         ),
       );
     } else {
       for (var i = 0; i < laborItems.length; i++) {
-        final l = laborItems[i];
+        final labor = laborItems[i];
         rows.add(
           pw.TableRow(
             decoration: pw.BoxDecoration(
-              color: i.isEven ? PdfColors.grey100 : PdfColors.white,
+              color: i.isEven ? PdfColors.white : PdfBranding.zebra,
             ),
             children: [
-              _cell(l.description, bodyStyle, alignRight: false),
-              _cell(moneyFmt.format(l.price), bodyStyle),
+              _cell(labor.description, bodyStyle, alignRight: false),
+              _cell(moneyFmt.format(labor.price), bodyStyle),
             ],
           ),
         );
@@ -276,121 +304,131 @@ class PdfTemplate {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(
-          'ISCILIK',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
-        ),
+        _sectionTitle('İşçilikler', branding),
         pw.SizedBox(height: 6),
-        pw.Table(
-          border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+        _buildRoundedTable(
+          rows: rows,
           columnWidths: const {
             0: pw.FlexColumnWidth(4),
             1: pw.FlexColumnWidth(2),
           },
-          children: rows,
         ),
       ],
     );
   }
 
-  static pw.Widget _buildTotalBlock(ServiceRecord service, NumberFormat moneyFmt) {
-    return pw.Align(
-      alignment: pw.Alignment.centerRight,
-      child: pw.Container(
-        width: 220,
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-          children: [
-            _totalRow('Ara toplam', moneyFmt.format(service.subtotal)),
-            if (service.kdvIncluded)
-              _totalRow(
-                'KDV (%${(service.kdvRate * 100).toStringAsFixed(0)})',
-                moneyFmt.format(service.kdvAmount),
-              ),
-            pw.SizedBox(height: 4),
-            pw.Divider(color: PdfColors.black, thickness: 0.8),
-            pw.SizedBox(height: 4),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'GENEL TOPLAM',
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                pw.Text(
-                  moneyFmt.format(service.grandTotal),
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+  static pw.Widget _buildRoundedTable({
+    required List<pw.TableRow> rows,
+    required Map<int, pw.TableColumnWidth> columnWidths,
+  }) {
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: PdfBranding.border, width: 0.8),
+      ),
+      child: pw.Table(
+        border: pw.TableBorder.all(color: PdfBranding.border, width: 0.6),
+        columnWidths: columnWidths,
+        children: rows,
       ),
     );
   }
 
-  static pw.Widget _buildFooter(ServiceRecord service) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.end,
-      children: [
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                service.technicianName,
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-              ),
-              pw.Text(
-                'Bakim Ustasi',
-                style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
-              ),
-            ],
-          ),
-        ),
-        pw.Expanded(
-          child: pw.Center(
-            child: pw.Text(
-              'Bizi tercih ettiginiz icin tesekkurler',
-              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+  static pw.Widget _buildTotalBlock({
+    required ServiceRecord service,
+    required NumberFormat moneyFmt,
+    required PdfBrandingBundle branding,
+  }) {
+    final totalText = AppFormatters.formatLira(service.grandTotal);
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: PdfBranding.zebra,
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: PdfBranding.totalBorder, width: 1),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.end,
+        children: [
+          _totalLine('Ara Toplam', moneyFmt.format(service.subtotal), branding),
+          if (service.kdvIncluded)
+            _totalLine(
+              'KDV (%${(service.kdvRate * 100).toStringAsFixed(0)})',
+              moneyFmt.format(service.kdvAmount),
+              branding,
             ),
-          ),
-        ),
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
+          pw.SizedBox(height: 4),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
             children: [
-              pw.Container(
-                width: 120,
-                child: pw.Divider(thickness: 0.8, color: PdfColors.black),
+              pw.Text(
+                'GENEL TOPLAM: ',
+                style: pw.TextStyle(font: branding.bold, fontSize: 13),
               ),
               pw.Text(
-                'Imza',
-                style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                totalText,
+                style: pw.TextStyle(
+                  font: branding.bold,
+                  fontSize: 16,
+                  color: PdfBranding.navy,
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  static pw.Widget _infoLine(String label, String value) {
+  static pw.Widget _totalLine(
+    String label,
+    String value,
+    PdfBrandingBundle branding,
+  ) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.end,
+        children: [
+          pw.Text(
+            '$label: ',
+            style: pw.TextStyle(font: branding.regular, fontSize: 10),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(font: branding.regular, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _sectionTitle(String text, PdfBrandingBundle branding) {
+    return pw.Text(
+      text,
+      style: pw.TextStyle(
+        font: branding.bold,
+        fontSize: 12,
+        color: PdfBranding.navy,
+      ),
+    );
+  }
+
+  static pw.Widget _infoLine(
+    String label,
+    String value,
+    PdfBrandingBundle branding,
+  ) {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 4),
       child: pw.RichText(
         text: pw.TextSpan(
-          style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.black),
+          style: pw.TextStyle(font: branding.regular, fontSize: 9.5),
           children: [
             pw.TextSpan(
               text: '$label: ',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              style: pw.TextStyle(font: branding.bold),
             ),
             pw.TextSpan(text: value),
           ],
@@ -407,23 +445,10 @@ class PdfTemplate {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       child: pw.Align(
-        alignment: alignRight ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+        alignment:
+            alignRight ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
         child: pw.Text(text, style: style),
       ),
     );
   }
-
-  static pw.Widget _totalRow(String label, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 3),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(label, style: const pw.TextStyle(fontSize: 10)),
-          pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
-        ],
-      ),
-    );
-  }
 }
-

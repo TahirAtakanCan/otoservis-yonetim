@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+const String companyName = 'Canal Oto Servis';
+const String companySubtitle = 'Profesyonel Araç Bakım Merkezi';
+const String companyPhone = '0XXX XXX XX XX';
+const String companyAddress = 'Adres bilgisi';
+
 /// Firestore koleksiyon adları (uygulama genelinde aynı isimler kullanılmalı).
 abstract final class FirestoreCollections {
   static const String vehicles = 'vehicles';
@@ -21,9 +26,10 @@ abstract final class AppColors {
 
 /// PDF, giriş ekranı ve başlık çubuğunda kullanılabilecek işletme bilgileri (buradan düzenleyin).
 abstract final class BusinessInfo {
-  static const String name = 'Canal Oto Servis';
-  static const String address = 'Sanayi Mah. Usta Sok. No:12, İstanbul';
-  static const String phone = '+90 212 000 00 00';
+  static const String name = companyName;
+  static const String subtitle = companySubtitle;
+  static const String address = companyAddress;
+  static const String phone = companyPhone;
 }
 
 /// KDV oranları (ondalık: 0.10 = %10). Servis ekranı dropdown ile uyumlu.
