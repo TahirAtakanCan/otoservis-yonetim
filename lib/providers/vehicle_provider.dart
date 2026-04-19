@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:otoservis_app/models/service_record.dart';
@@ -85,6 +87,67 @@ class VehicleProvider extends ChangeNotifier {
         .doc(key)
         .set(toSave.toMap());
     _selectedVehicle = toSave;
+    notifyListeners();
+  }
+
+  /// Plaka değişmez; diğer alanları günceller.
+  Future<void> updateVehicleDetails({
+    required String plate,
+    required String ownerName,
+    required String ownerPhone,
+    required String brand,
+    required String model,
+    required int year,
+  }) async {
+    final key = normalizePlate(plate);
+    if (key.isEmpty) throw ArgumentError('Geçersiz plaka');
+
+    await _firestore.collection(FirestoreCollections.vehicles).doc(key).update({
+      'ownerName': ownerName.trim(),
+      'ownerPhone': ownerPhone.trim(),
+      'brand': brand.trim(),
+      'model': model.trim(),
+      'year': year,
+    });
+
+    if (_selectedVehicle?.plate == key) {
+      _selectedVehicle = _selectedVehicle!.copyWith(
+        ownerName: ownerName.trim(),
+        ownerPhone: ownerPhone.trim(),
+        brand: brand.trim(),
+        model: model.trim(),
+        year: year,
+      );
+    }
+    notifyListeners();
+  }
+
+  /// Araç belgesini ve bu araca ait tüm servis kayıtlarını siler.
+  Future<void> deleteVehicleWithServiceRecords(String plate) async {
+    final key = normalizePlate(plate);
+    if (key.isEmpty) throw ArgumentError('Geçersiz plaka');
+
+    final recordsSnap = await _firestore
+        .collection(FirestoreCollections.serviceRecords)
+        .where('vehiclePlate', isEqualTo: key)
+        .get();
+
+    const chunkSize = 450;
+    final docs = recordsSnap.docs;
+    for (var i = 0; i < docs.length; i += chunkSize) {
+      final batch = _firestore.batch();
+      final end = math.min(i + chunkSize, docs.length);
+      for (var j = i; j < end; j++) {
+        batch.delete(docs[j].reference);
+      }
+      await batch.commit();
+    }
+
+    await _firestore.collection(FirestoreCollections.vehicles).doc(key).delete();
+
+    if (_selectedVehicle?.plate == key) {
+      _selectedVehicle = null;
+    }
     notifyListeners();
   }
 }

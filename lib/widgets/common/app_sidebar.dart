@@ -84,6 +84,12 @@ class AppSidebar extends StatelessWidget {
                     );
                   },
                 ),
+                _SidebarTile(
+                  icon: Icons.directions_car_outlined,
+                  label: 'Araçlar',
+                  selected: location == '/vehicles',
+                  onTap: () => context.go('/vehicles'),
+                ),
                 if (showInventory)
                   _SidebarTile(
                     icon: Icons.inventory_2_outlined,
@@ -150,6 +156,7 @@ class AppSidebar extends StatelessWidget {
 
   static bool _isVehicleSectionActive(String path) {
     if (path == '/vehicle-search') return true;
+    if (path == '/vehicles') return true;
     if (path.startsWith('/vehicle/')) return true;
     return false;
   }

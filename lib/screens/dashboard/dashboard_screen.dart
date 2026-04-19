@@ -94,7 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _onVehiclesCardTap(BuildContext context) {
-    context.go('/vehicle-search');
+    context.go('/vehicles');
   }
 
   void _onCriticalStockTap(BuildContext context) {
