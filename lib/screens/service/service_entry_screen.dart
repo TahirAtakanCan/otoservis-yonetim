@@ -16,10 +16,7 @@ import 'package:otoservis_app/utils/formatters.dart';
 import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 
 class ServiceEntryScreen extends StatefulWidget {
-  const ServiceEntryScreen({
-    super.key,
-    this.initialPlate,
-  });
+  const ServiceEntryScreen({super.key, this.initialPlate});
 
   final String? initialPlate;
 
@@ -43,6 +40,8 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   double _kdvRate = KdvRates.values.last;
 
   String? _inventorySearchError;
+  bool _resolvingVehicle = true;
+  String? _vehicleGateError;
 
   static const double _leftWidth = 280;
   static const double _rightWidth = 200;
@@ -52,21 +51,68 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final vp = context.read<VehicleProvider>();
-      final auth = context.read<AuthProvider>();
-      final initial = widget.initialPlate;
-      if (initial != null && initial.isNotEmpty) {
-        _plateController.text = vp.formatPlateForDisplay(vp.normalizePlate(initial));
-        _plateController.selection = TextSelection.collapsed(
-          offset: _plateController.text.length,
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  Future<void> _bootstrap() async {
+    final vp = context.read<VehicleProvider>();
+    final auth = context.read<AuthProvider>();
+
+    final user = auth.currentUser;
+    _technicianController.text =
+        (user?.name.trim().isNotEmpty ?? false)
+            ? user!.name
+            : (user?.email ?? '');
+
+    final initialRaw = widget.initialPlate ?? '';
+    final normalizedPlate = vp.normalizePlate(initialRaw);
+    if (normalizedPlate.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Servis başlatmak için önce kayıtlı araç seçin.'),
+        ),
+      );
+      context.go('/vehicles');
+      return;
+    }
+
+    try {
+      final selected = vp.selectedVehicle;
+      final vehicle =
+          selected != null &&
+                  vp.normalizePlate(selected.plate) == normalizedPlate
+              ? selected
+              : await vp.fetchVehicleByPlate(normalizedPlate);
+
+      if (!mounted) return;
+      if (vehicle == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Araç bulunamadı. Önce araç kaydı oluşturun.'),
+          ),
         );
+        context.go('/vehicles/new?plate=$normalizedPlate');
+        return;
       }
-      final user = auth.currentUser;
-      _technicianController.text =
-          (user?.name.trim().isNotEmpty ?? false) ? user!.name : (user?.email ?? '');
-      setState(() {});
-    });
+
+      vp.setSelectedVehicle(vehicle);
+      _plateController.text = vp.formatPlateForDisplay(vehicle.plate);
+      _plateController.selection = TextSelection.collapsed(
+        offset: _plateController.text.length,
+      );
+
+      setState(() {
+        _resolvingVehicle = false;
+        _vehicleGateError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _vehicleGateError = 'Araç bilgisi doğrulanamadı: $e';
+        _resolvingVehicle = false;
+      });
+    }
   }
 
   @override
@@ -172,11 +218,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     if (ok > item.quantity) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Stokta yalnızca ${item.quantity} adet var.',
-          ),
-        ),
+        SnackBar(content: Text('Stokta yalnızca ${item.quantity} adet var.')),
       );
       return;
     }
@@ -228,73 +270,73 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     try {
       final ok = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('İşçilik satırı'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: descCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'İşlem açıklaması',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Zorunlu' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: priceCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        builder:
+            (ctx) => AlertDialog(
+              title: const Text('İşçilik satırı'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: descCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'İşlem açıklaması',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator:
+                          (v) =>
+                              (v == null || v.trim().isEmpty)
+                                  ? 'Zorunlu'
+                                  : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: priceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'Fiyat (₺)',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Zorunlu';
+                        final p = double.tryParse(
+                          v.trim().replaceAll(',', '.'),
+                        );
+                        if (p == null || p < 0) return 'Geçerli fiyat girin';
+                        return null;
+                      },
+                    ),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'Fiyat (₺)',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Zorunlu';
-                    final p = double.tryParse(v.trim().replaceAll(',', '.'));
-                    if (p == null || p < 0) return 'Geçerli fiyat girin';
-                    return null;
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('İptal'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      Navigator.pop(ctx, true);
+                    }
                   },
+                  child: const Text('Ekle'),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('İptal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(ctx, true);
-                }
-              },
-              child: const Text('Ekle'),
-            ),
-          ],
-        ),
       );
 
       if (ok != true) return;
 
-      final price = double.parse(
-        priceCtrl.text.trim().replaceAll(',', '.'),
-      );
+      final price = double.parse(priceCtrl.text.trim().replaceAll(',', '.'));
       setState(() {
-        _labor.add(
-          LaborItem(
-            description: descCtrl.text.trim(),
-            price: price,
-          ),
-        );
+        _labor.add(LaborItem(description: descCtrl.text.trim(), price: price));
       });
     } finally {
       SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -311,8 +353,18 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
 
     final plate = _normalizedPlate(vp);
     if (plate.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Araç plakası girin.')));
+      return;
+    }
+
+    final selected = vp.selectedVehicle;
+    if (selected == null || vp.normalizePlate(selected.plate) != plate) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Araç plakası girin.')),
+        const SnackBar(
+          content: Text('Servise devam etmek için kayıtlı bir araç seçin.'),
+        ),
       );
       return;
     }
@@ -335,15 +387,16 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
 
     final user = auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Oturum bulunamadı.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı.')));
       return;
     }
 
-    final techName = _technicianController.text.trim().isNotEmpty
-        ? _technicianController.text.trim()
-        : (user.name.trim().isNotEmpty ? user.name : user.email);
+    final techName =
+        _technicianController.text.trim().isNotEmpty
+            ? _technicianController.text.trim()
+            : (user.name.trim().isNotEmpty ? user.name : user.email);
 
     final st = _subtotal();
     final kdv = _kdvAmount();
@@ -372,9 +425,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       context.go('/pdf/preview/$id');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Servis kaydedilemedi: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Servis kaydedilemedi: $e')));
     }
   }
 
@@ -392,7 +445,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go('/vehicle-search?flow=service');
+              context.go('/vehicles');
             }
           },
         ),
@@ -401,75 +454,98 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       ),
       body: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(_panelRadius),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x15000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.directions_car_filled_outlined,
-                        color: AppColors.primaryNavy,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _plateController,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: const InputDecoration(
-                            labelText: 'Araç plakası',
-                            hintText: 'Örn: 34 ABC 123',
-                            border: OutlineInputBorder(),
-                            isDense: true,
+        child:
+            _resolvingVehicle
+                ? const Center(child: CircularProgressIndicator())
+                : _vehicleGateError != null
+                ? Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppErrorBanner(
+                            message: _vehicleGateError!,
+                            onRetry: _bootstrap,
                           ),
-                          onChanged: (_) => setState(() {}),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: () => context.go('/vehicles'),
+                            child: const Text('Araç listesine dön'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                : Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(_panelRadius),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x15000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.directions_car_filled_outlined,
+                                color: AppColors.primaryNavy,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                  controller: _plateController,
+                                  readOnly: true,
+                                  textCapitalization:
+                                      TextCapitalization.characters,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Araç plakası',
+                                    hintText: 'Örn: 34 ABC 123',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              width: _leftWidth,
+                              child: _buildLeftPanel(inv),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: _buildCenterPanel()),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: _rightWidth,
+                              child: _buildRightPanel(svc.isSaving),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: _leftWidth,
-                      child: _buildLeftPanel(inv),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildCenterPanel(),
-                    ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: _rightWidth,
-                      child: _buildRightPanel(
-                        svc.isSaving,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -508,9 +584,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             Text(
               'Stoktan parça',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryNavy,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryNavy,
+              ),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -526,97 +602,104 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   horizontal: 12,
                   vertical: 10,
                 ),
-                suffixIcon: inv.isSearching
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : const Icon(Icons.search),
+                suffixIcon:
+                    inv.isSearching
+                        ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                        : const Icon(Icons.search),
               ),
               onChanged: _onSearchChanged,
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: inv.inventoryLoading && showAll
-                  ? const Center(child: CircularProgressIndicator())
-                  : visibleItems.isEmpty
+              child:
+                  inv.inventoryLoading && showAll
+                      ? const Center(child: CircularProgressIndicator())
+                      : visibleItems.isEmpty
                       ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.manage_search_outlined,
-                            color: Colors.grey.shade500,
-                            size: 28,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            showAll
-                                ? 'Stokta görüntülenecek parça bulunamadı.'
-                                : 'Aramaya uygun parça bulunamadı.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.black54),
-                          ),
-                        ],
-                      ),
-                    )
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.manage_search_outlined,
+                              color: Colors.grey.shade500,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              showAll
+                                  ? 'Stokta görüntülenecek parça bulunamadı.'
+                                  : 'Aramaya uygun parça bulunamadı.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      )
                       : ListView.separated(
-                      itemCount: visibleItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
-                      itemBuilder: (context, i) {
-                        final item = visibleItems[i];
-                        final disabled = item.quantity <= 0;
-                        return Material(
-                          color: disabled
-                              ? Colors.red.shade50
-                              : Colors.blueGrey.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          child: ListTile(
-                            dense: true,
-                            enabled: !disabled,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            title: Text(
-                              item.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              'Stok: ${item.quantity} · ${AppFormatters.formatLira(item.unitPrice)}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: disabled ? Colors.red.shade700 : null,
+                        itemCount: visibleItems.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 6),
+                        itemBuilder: (context, i) {
+                          final item = visibleItems[i];
+                          final disabled = item.quantity <= 0;
+                          return Material(
+                            color:
+                                disabled
+                                    ? Colors.red.shade50
+                                    : Colors.blueGrey.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            child: ListTile(
+                              dense: true,
+                              enabled: !disabled,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
+                              title: Text(
+                                item.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                'Stok: ${item.quantity} · ${AppFormatters.formatLira(item.unitPrice)}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: disabled ? Colors.red.shade700 : null,
+                                ),
+                              ),
+                              trailing: Icon(
+                                disabled
+                                    ? Icons.block_outlined
+                                    : Icons.add_circle_outline,
+                                color:
+                                    disabled
+                                        ? Colors.red.shade700
+                                        : AppColors.primaryNavy,
+                                size: 20,
+                              ),
+                              onTap:
+                                  disabled
+                                      ? () {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Stokta yok, bu parça seçilemez.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      : () => _onPartTap(item),
                             ),
-                            trailing: Icon(
-                              disabled
-                                  ? Icons.block_outlined
-                                  : Icons.add_circle_outline,
-                              color: disabled
-                                  ? Colors.red.shade700
-                                  : AppColors.primaryNavy,
-                              size: 20,
-                            ),
-                            onTap: disabled
-                                ? () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Stokta yok, bu parça seçilemez.',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                : () => _onPartTap(item),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
             ),
           ],
         ),
@@ -651,10 +734,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   labelColor: AppColors.primaryNavy,
                   unselectedLabelColor: Colors.black54,
                   indicatorColor: AppColors.primaryNavy,
-                  tabs: const [
-                    Tab(text: 'Parçalar'),
-                    Tab(text: 'İşçilik'),
-                  ],
+                  tabs: const [Tab(text: 'Parçalar'), Tab(text: 'İşçilik')],
                 ),
               ),
             ),
@@ -662,10 +742,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildPartsTable(),
-                _buildLaborTable(),
-              ],
+              children: [_buildPartsTable(), _buildLaborTable()],
             ),
           ),
         ],
@@ -710,31 +787,32 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                 DataColumn(label: Text('Toplam')),
                 DataColumn(label: Text('')),
               ],
-              rows: _parts.asMap().entries.map((e) {
-                final i = e.key;
-                final p = e.value;
-                return DataRow(
-                  color: WidgetStatePropertyAll(
-                    i.isEven
-                        ? Colors.white
-                        : AppColors.surfaceMuted.withValues(alpha: 0.7),
-                  ),
-                  cells: [
-                    DataCell(Text(p.partName)),
-                    DataCell(Text('${p.quantity}')),
-                    DataCell(Text(AppFormatters.formatLira(p.unitPrice))),
-                    DataCell(Text(AppFormatters.formatLira(p.totalPrice))),
-                    DataCell(
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: () {
-                          setState(() => _parts.removeAt(i));
-                        },
+              rows:
+                  _parts.asMap().entries.map((e) {
+                    final i = e.key;
+                    final p = e.value;
+                    return DataRow(
+                      color: WidgetStatePropertyAll(
+                        i.isEven
+                            ? Colors.white
+                            : AppColors.surfaceMuted.withValues(alpha: 0.7),
                       ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                      cells: [
+                        DataCell(Text(p.partName)),
+                        DataCell(Text('${p.quantity}')),
+                        DataCell(Text(AppFormatters.formatLira(p.unitPrice))),
+                        DataCell(Text(AppFormatters.formatLira(p.totalPrice))),
+                        DataCell(
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () {
+                              setState(() => _parts.removeAt(i));
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
             ),
           ),
         ),
@@ -758,77 +836,82 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: _labor.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.design_services_outlined,
-                            size: 32, color: Colors.black45),
-                        SizedBox(height: 8),
-                        Text(
-                          'Henüz işçilik satırı yok.',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  )
-                : Scrollbar(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SingleChildScrollView(
-                        child: DataTable(
-                          headingRowHeight: 40,
-                          dataRowMinHeight: 40,
-                          headingRowColor: WidgetStatePropertyAll(
-                            AppColors.primaryNavy.withValues(alpha: 0.1),
+            child:
+                _labor.isEmpty
+                    ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.design_services_outlined,
+                            size: 32,
+                            color: Colors.black45,
                           ),
-                          columns: const [
-                            DataColumn(label: Text('İşlem açıklaması')),
-                            DataColumn(label: Text('Fiyat')),
-                            DataColumn(label: Text('')),
-                          ],
-                          rows: _labor.asMap().entries.map((e) {
-                            final i = e.key;
-                            final l = e.value;
-                            return DataRow(
-                              color: WidgetStatePropertyAll(
-                                i.isEven
-                                    ? Colors.white
-                                    : AppColors.surfaceMuted.withValues(
-                                        alpha: 0.7,
-                                      ),
-                              ),
-                              cells: [
-                                DataCell(Text(l.description)),
-                                DataCell(Text(AppFormatters.formatLira(l.price))),
-                                DataCell(
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      size: 20,
+                          SizedBox(height: 8),
+                          Text(
+                            'Henüz işçilik satırı yok.',
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    )
+                    : Scrollbar(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SingleChildScrollView(
+                          child: DataTable(
+                            headingRowHeight: 40,
+                            dataRowMinHeight: 40,
+                            headingRowColor: WidgetStatePropertyAll(
+                              AppColors.primaryNavy.withValues(alpha: 0.1),
+                            ),
+                            columns: const [
+                              DataColumn(label: Text('İşlem açıklaması')),
+                              DataColumn(label: Text('Fiyat')),
+                              DataColumn(label: Text('')),
+                            ],
+                            rows:
+                                _labor.asMap().entries.map((e) {
+                                  final i = e.key;
+                                  final l = e.value;
+                                  return DataRow(
+                                    color: WidgetStatePropertyAll(
+                                      i.isEven
+                                          ? Colors.white
+                                          : AppColors.surfaceMuted.withValues(
+                                            alpha: 0.7,
+                                          ),
                                     ),
-                                    onPressed: () {
-                                      setState(() => _labor.removeAt(i));
-                                    },
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
+                                    cells: [
+                                      DataCell(Text(l.description)),
+                                      DataCell(
+                                        Text(AppFormatters.formatLira(l.price)),
+                                      ),
+                                      DataCell(
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            size: 20,
+                                          ),
+                                          onPressed: () {
+                                            setState(() => _labor.removeAt(i));
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                          ),
                         ),
                       ),
                     ),
-                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRightPanel(
-    bool saving,
-  ) {
+  Widget _buildRightPanel(bool saving) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -849,9 +932,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             Text(
               'Özet',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryNavy,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryNavy,
+              ),
             ),
             const SizedBox(height: 10),
             _kv('Ara toplam', AppFormatters.formatLira(_subtotal())),
@@ -881,17 +964,19 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   vertical: 8,
                 ),
               ),
-              items: KdvRates.values
-                  .map(
-                    (r) => DropdownMenuItem<double>(
-                      value: r,
-                      child: Text(KdvRates.label(r)),
-                    ),
-                  )
-                  .toList(),
-              onChanged: _kdvIncluded
-                  ? (v) => setState(() => _kdvRate = v ?? 0.2)
-                  : null,
+              items:
+                  KdvRates.values
+                      .map(
+                        (r) => DropdownMenuItem<double>(
+                          value: r,
+                          child: Text(KdvRates.label(r)),
+                        ),
+                      )
+                      .toList(),
+              onChanged:
+                  _kdvIncluded
+                      ? (v) => setState(() => _kdvRate = v ?? 0.2)
+                      : null,
             ),
             const SizedBox(height: 8),
             _kv('KDV tutarı', AppFormatters.formatLira(_kdvAmount())),
@@ -909,27 +994,24 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                     Text(
                       'GENEL TOPLAM',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       AppFormatters.formatLira(_grandTotal()),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Teknisyen',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
+            Text('Teknisyen', style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(height: 4),
             TextField(
               controller: _technicianController,
@@ -955,16 +1037,17 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             FilledButton.icon(
               onPressed: saving ? null : _complete,
               icon: const Icon(Icons.check_circle_outline),
-              label: saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Servisi tamamla'),
+              label:
+                  saving
+                      ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Text('Servisi tamamla'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -979,12 +1062,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            k,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
+        Expanded(child: Text(k, style: Theme.of(context).textTheme.bodySmall)),
         Text(
           v,
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),

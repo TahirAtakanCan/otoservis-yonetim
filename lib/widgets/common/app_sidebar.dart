@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
 import 'package:otoservis_app/utils/constants.dart';
-import 'package:otoservis_app/widgets/vehicle/add_vehicle_dialog.dart';
 
 /// Sol sabit sidebar (220px). Rol bazlı menü ve çıkış.
 class AppSidebar extends StatelessWidget {
@@ -44,11 +43,12 @@ class AppSidebar extends StatelessWidget {
                         child: Image.asset(
                           'assets/images/app_logo.png',
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.car_repair,
-                            color: Colors.white70,
-                            size: 34,
-                          ),
+                          errorBuilder:
+                              (_, __, ___) => const Icon(
+                                Icons.car_repair,
+                                color: Colors.white70,
+                                size: 34,
+                              ),
                         ),
                       ),
                     ),
@@ -80,37 +80,17 @@ class AppSidebar extends StatelessWidget {
                   onTap: () => context.go('/'),
                 ),
                 _SidebarTile(
-                  icon: Icons.search,
-                  label: 'Araç Ara',
-                  selected: _isVehicleSectionActive(location),
-                  onTap: () => context.go('/vehicle-search'),
-                ),
-                _SidebarTile(
                   icon: Icons.add_circle_outline,
                   label: 'Araç Ekle',
-                  selected: false,
-                  onTap: () async {
-                    final vehicle = await showAddVehicleDialog(context);
-                    if (vehicle == null || !context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '${vehicle.plate} plakalı araç kaydedildi.',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                _SidebarTile(
-                  icon: Icons.build_circle_outlined,
-                  label: 'Yeni Servis',
-                  selected: location == '/service/new',
-                  onTap: () => context.go('/vehicle-search?flow=service'),
+                  selected: location == '/vehicles/new',
+                  onTap: () => context.go('/vehicles/new'),
                 ),
                 _SidebarTile(
                   icon: Icons.directions_car_outlined,
                   label: 'Araçlar',
-                  selected: location == '/vehicles',
+                  selected:
+                      location == '/vehicles' ||
+                      location.startsWith('/vehicle/'),
                   onTap: () => context.go('/vehicles'),
                 ),
                 if (showInventory)
@@ -175,13 +155,6 @@ class AppSidebar extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static bool _isVehicleSectionActive(String path) {
-    if (path == '/vehicle-search') return true;
-    if (path == '/vehicles') return true;
-    if (path.startsWith('/vehicle/')) return true;
-    return false;
   }
 
   static String _roleLabel(String role) {

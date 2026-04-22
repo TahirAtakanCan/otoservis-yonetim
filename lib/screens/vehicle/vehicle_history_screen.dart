@@ -10,10 +10,7 @@ import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
 class VehicleHistoryScreen extends StatefulWidget {
-  const VehicleHistoryScreen({
-    super.key,
-    required this.plate,
-  });
+  const VehicleHistoryScreen({super.key, required this.plate});
 
   /// Route parametresi (URL decode edilmiş veya ham plaka).
   final String plate;
@@ -74,7 +71,9 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
   }
 
   String _summary(ServiceRecord r) {
-    final labor = r.laborItems.map((e) => e.description).where((s) => s.isNotEmpty);
+    final labor = r.laborItems
+        .map((e) => e.description)
+        .where((s) => s.isNotEmpty);
     final parts = r.parts.map((e) => '${e.partName}×${e.quantity}');
     final bits = [...labor, ...parts];
     if (bits.isEmpty) {
@@ -121,196 +120,177 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
           Expanded(
             child: ColoredBox(
               color: AppColors.surfaceMuted,
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null && v == null
+              child:
+                  _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _error != null && v == null
                       ? Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 520),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 520),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AppErrorBanner(message: _error!, onRetry: _load),
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: () => context.go('/vehicles'),
+                                child: const Text('Araç listesine dön'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      : v == null
+                      ? const SizedBox.shrink()
+                      : SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
                               children: [
-                                AppErrorBanner(
-                                  message: _error!,
-                                  onRetry: _load,
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back),
+                                  onPressed: () => context.go('/vehicles'),
                                 ),
-                                const SizedBox(height: 16),
-                                FilledButton(
-                                  onPressed: () => context.go('/vehicle-search'),
-                                  child: const Text('Plaka aramaya dön'),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Araç geçmişi',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
-                          ),
-                        )
-                      : v == null
-                          ? const SizedBox.shrink()
-                          : SingleChildScrollView(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.arrow_back),
-                                        onPressed: () =>
-                                            context.go('/vehicle-search'),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Araç geçmişi',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Card(
-                                    elevation: 2,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  vp.formatPlateForDisplay(
-                                                    v.plate,
-                                                  ),
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .headlineSmall
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        letterSpacing: 1.2,
-                                                      ),
-                                                ),
-                                              ),
-                                              FilledButton.icon(
-                                                onPressed: () {
-                                                  vp.setSelectedVehicle(v);
-                                                  context.go(
-                                                    '/service/new?plate=${Uri.encodeQueryComponent(v.plate)}',
-                                                  );
-                                                },
-                                                icon: const Icon(
-                                                  Icons.add_task,
-                                                  size: 20,
-                                                ),
-                                                label: const Text(
-                                                  'Yeni Servis Girişi',
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const Divider(height: 28),
-                                          _infoRow('Sahip', v.ownerName),
-                                          _infoRow('Telefon', v.ownerPhone),
-                                          _infoRow(
-                                            'Araç',
-                                            '${v.brand} ${v.model} (${v.year})',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    'Servis kayıtları',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  if (_records.isEmpty)
-                                    Card(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(24),
-                                        child: Center(
+                            const SizedBox(height: 16),
+                            Card(
+                              elevation: 2,
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
                                           child: Text(
-                                            'Henüz servis kaydı yok.',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyLarge
-                                                ?.copyWith(
-                                                  color: Colors.black45,
-                                                ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    ..._records.map(
-                                      (r) => Card(
-                                        margin: const EdgeInsets.only(
-                                          bottom: 10,
-                                        ),
-                                        child: ListTile(
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 8,
-                                          ),
-                                          title: Text(
-                                            AppFormatters.formatDateTime(r.date),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
+                                            vp.formatPlateForDisplay(v.plate),
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 1.2,
                                             ),
                                           ),
-                                          subtitle: Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 6,
-                                            ),
-                                            child: Text(
-                                              _summary(r),
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                        ),
+                                        FilledButton.icon(
+                                          onPressed: () {
+                                            vp.setSelectedVehicle(v);
+                                            context.go(
+                                              '/service/new?plate=${Uri.encodeQueryComponent(v.plate)}',
+                                            );
+                                          },
+                                          icon: const Icon(
+                                            Icons.add_task,
+                                            size: 20,
                                           ),
-                                          trailing: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                AppFormatters.formatLira(r.grandTotal),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                _statusLabel(r.status),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: _statusColor(
-                                                    r.status,
-                                                  ),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
+                                          label: const Text(
+                                            'Yeni Servis Girişi',
                                           ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                ],
+                                    const Divider(height: 28),
+                                    _infoRow('Sahip', v.ownerName),
+                                    _infoRow('Telefon', v.ownerPhone),
+                                    _infoRow(
+                                      'Araç',
+                                      '${v.brand} ${v.model} (${v.year})',
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Servis kayıtları',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 12),
+                            if (_records.isEmpty)
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Center(
+                                    child: Text(
+                                      'Henüz servis kaydı yok.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(color: Colors.black45),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._records.map(
+                                (r) => Card(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    title: Text(
+                                      AppFormatters.formatDateTime(r.date),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        _summary(r),
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    trailing: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          AppFormatters.formatLira(
+                                            r.grandTotal,
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _statusLabel(r.status),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: _statusColor(r.status),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
             ),
           ),
         ],

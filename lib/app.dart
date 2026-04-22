@@ -9,8 +9,8 @@ import 'package:otoservis_app/screens/login/login_screen.dart';
 import 'package:otoservis_app/screens/pdf/pdf_preview_screen.dart';
 import 'package:otoservis_app/screens/reports/reports_screen.dart';
 import 'package:otoservis_app/screens/service/service_entry_screen.dart';
+import 'package:otoservis_app/screens/vehicle/vehicle_add_screen.dart';
 import 'package:otoservis_app/screens/vehicle/vehicle_history_screen.dart';
-import 'package:otoservis_app/screens/vehicle/vehicle_search_screen.dart';
 import 'package:otoservis_app/screens/vehicle/vehicles_list_screen.dart';
 import 'package:otoservis_app/utils/constants.dart';
 
@@ -77,10 +77,11 @@ class _AppState extends State<App> {
           builder: (context, state) => const DashboardScreen(),
         ),
         GoRoute(
-          path: '/vehicle-search',
-          builder: (context, state) => VehicleSearchScreen(
-            flow: state.uri.queryParameters['flow'],
-          ),
+          path: '/vehicles/new',
+          builder:
+              (context, state) => VehicleAddScreen(
+                initialPlate: state.uri.queryParameters['plate'],
+              ),
         ),
         GoRoute(
           path: '/vehicles',
@@ -158,7 +159,11 @@ class _AppState extends State<App> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.cloud_off, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.cloud_off,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
@@ -188,10 +193,6 @@ class _AuthLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
