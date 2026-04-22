@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 const String companyName = 'Mert Opel Servis';
 const String companySubtitle = 'Profesyonel Araç Bakım Merkezi';
-const String companyPhone = '0XXX XXX XX XX';
-const String companyAddress = 'Adres bilgisi';
+const String companyPhone = '0543 835 0390';
+const String companyAddress = 'Yeni Oto Sanayi 152341. Sokak Seydişehir/Konya';
 
 /// Firestore koleksiyon adları (uygulama genelinde aynı isimler kullanılmalı).
 abstract final class FirestoreCollections {
@@ -14,14 +14,14 @@ abstract final class FirestoreCollections {
 
 /// Uygulama renk paleti (Material 3 ile birlikte kullanın).
 abstract final class AppColors {
-  /// Birincil: koyu lacivert
-  static const Color primaryNavy = Color(0xFF0F172A);
+  /// Birincil: antrasit siyah
+  static const Color primaryNavy = Color(0xFF121212);
 
-  /// İkincil: turuncu vurgu
-  static const Color secondaryOrange = Color(0xFFE67E22);
+  /// İkincil: sarı vurgu
+  static const Color secondaryOrange = Color(0xFFFACC15);
 
   /// Açık yüzey / arka plan
-  static const Color surfaceMuted = Color(0xFFF1F5F9);
+  static const Color surfaceMuted = Color(0xFFFFFFFF);
 }
 
 /// PDF, giriş ekranı ve başlık çubuğunda kullanılabilecek işletme bilgileri (buradan düzenleyin).

@@ -6,13 +6,12 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
-import 'package:otoservis_app/utils/constants.dart';
 import 'package:otoservis_app/utils/formatters.dart';
 import 'package:otoservis_app/utils/pdf_branding.dart';
 
 /// PDF yardımcıları — Roboto fontları [PdfBranding.loadBundle] ile yüklenir.
 abstract final class ReportsPdfExport {
-  static final PdfColor _totalBoxColor = PdfColor.fromHex('1a237e');
+  static final PdfColor _totalBoxColor = PdfColor.fromHex('121212');
 
   static pw.Widget _footer(pw.Context context, PdfBrandingBundle bundle) {
     return pw.Container(
@@ -20,7 +19,11 @@ abstract final class ReportsPdfExport {
       margin: const pw.EdgeInsets.only(top: 8),
       child: pw.Text(
         'Sayfa ${context.pageNumber} / ${context.pagesCount}',
-        style: pw.TextStyle(font: bundle.regular, fontSize: 8, color: PdfColors.grey700),
+        style: pw.TextStyle(
+          font: bundle.regular,
+          fontSize: 8,
+          color: PdfColors.grey700,
+        ),
       ),
     );
   }
@@ -37,23 +40,24 @@ abstract final class ReportsPdfExport {
     );
   }
 
+  static pw.Widget _reportHeader(
+    PdfBrandingBundle bundle,
+    String title,
+    DateTime date,
+  ) {
+    return PdfBranding.buildPremiumHeader(
+      bundle: bundle,
+      title: title.toUpperCase(),
+      date: date,
+    );
+  }
+
   static pw.Widget _sectionTitle(PdfBrandingBundle bundle, String title) {
     return pw.Text(
       title,
       style: pw.TextStyle(
         font: bundle.bold,
         fontSize: 14,
-        color: PdfBranding.navy,
-      ),
-    );
-  }
-
-  static pw.Widget _companyTitle(PdfBrandingBundle bundle) {
-    return pw.Text(
-      companyName,
-      style: pw.TextStyle(
-        font: bundle.bold,
-        fontSize: 18,
         color: PdfBranding.navy,
       ),
     );
@@ -67,14 +71,18 @@ abstract final class ReportsPdfExport {
     );
     return pw.TableRow(
       decoration: pw.BoxDecoration(color: PdfBranding.navy),
-      children: cells
-          .map(
-            (c) => pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 6),
-              child: pw.Text(c, style: style),
-            ),
-          )
-          .toList(),
+      children:
+          cells
+              .map(
+                (c) => pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 6,
+                  ),
+                  child: pw.Text(c, style: style),
+                ),
+              )
+              .toList(),
     );
   }
 
@@ -87,14 +95,18 @@ abstract final class ReportsPdfExport {
     final bg = index.isEven ? PdfColors.white : PdfBranding.zebra;
     return pw.TableRow(
       decoration: pw.BoxDecoration(color: bg),
-      children: cells
-          .map(
-            (c) => pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 5),
-              child: pw.Text(c, style: bodyStyle),
-            ),
-          )
-          .toList(),
+      children:
+          cells
+              .map(
+                (c) => pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 5,
+                  ),
+                  child: pw.Text(c, style: bodyStyle),
+                ),
+              )
+              .toList(),
     );
   }
 
@@ -134,7 +146,7 @@ abstract final class ReportsPdfExport {
                     style: pw.TextStyle(
                       font: bundle.bold,
                       fontSize: 10,
-                      color: PdfColors.white,
+                      color: PdfBranding.gold,
                     ),
                   ),
                 ],
@@ -198,11 +210,9 @@ abstract final class ReportsPdfExport {
         footer: (c) => _footer(c, bundle),
         build: (context) {
           return [
-            _companyTitle(bundle),
-            pw.SizedBox(height: 4),
+            _reportHeader(bundle, 'Gelir Raporu', end),
+            pw.SizedBox(height: 10),
             _rangeSubtitle(bundle, start, end),
-            pw.SizedBox(height: 16),
-            _sectionTitle(bundle, 'Gelir Raporu'),
             pw.SizedBox(height: 12),
             pw.Table(
               border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
@@ -216,18 +226,15 @@ abstract final class ReportsPdfExport {
                 6: const pw.FixedColumnWidth(52),
               },
               children: [
-                _headerRow(
-                  [
-                    'Tarih',
-                    'Plaka',
-                    'Teknisyen',
-                    'Parça Top.',
-                    'İşçilik',
-                    'KDV',
-                    'Genel Top.',
-                  ],
-                  bundle,
-                ),
+                _headerRow([
+                  'Tarih',
+                  'Plaka',
+                  'Teknisyen',
+                  'Parça Top.',
+                  'İşçilik',
+                  'KDV',
+                  'Genel Top.',
+                ], bundle),
                 for (var i = 0; i < rows.length; i++)
                   _dataRow(
                     [
@@ -245,10 +252,16 @@ abstract final class ReportsPdfExport {
               ],
             ),
             pw.SizedBox(height: 16),
-            _totalsBox(bundle, moneyFmt, [
-              ('Toplam KDV tutarı', totalKdv),
-              ('KDV hariç toplam', totalExcl),
-            ], 'Genel toplam', totalGrand),
+            _totalsBox(
+              bundle,
+              moneyFmt,
+              [
+                ('Toplam KDV tutarı', totalKdv),
+                ('KDV hariç toplam', totalExcl),
+              ],
+              'Genel toplam',
+              totalGrand,
+            ),
           ];
         },
       ),
@@ -260,7 +273,10 @@ abstract final class ReportsPdfExport {
   static Future<Uint8List> buildVehiclePdf({
     required DateTime start,
     required DateTime end,
-    required List<(String plate, String owner, int count, double spend, DateTime last)> rows,
+    required List<
+      (String plate, String owner, int count, double spend, DateTime last)
+    >
+    rows,
   }) async {
     final bundle = await PdfBranding.loadBundle();
     final doc = pw.Document(theme: bundle.theme);
@@ -278,11 +294,9 @@ abstract final class ReportsPdfExport {
         footer: (c) => _footer(c, bundle),
         build: (context) {
           return [
-            _companyTitle(bundle),
-            pw.SizedBox(height: 4),
+            _reportHeader(bundle, 'Araç Raporu', end),
+            pw.SizedBox(height: 10),
             _rangeSubtitle(bundle, start, end),
-            pw.SizedBox(height: 16),
-            _sectionTitle(bundle, 'Araç Raporu'),
             pw.SizedBox(height: 12),
             pw.Table(
               border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
@@ -295,17 +309,14 @@ abstract final class ReportsPdfExport {
                 5: const pw.FixedColumnWidth(72),
               },
               children: [
-                _headerRow(
-                  [
-                    'Sıra',
-                    'Plaka',
-                    'Araç Sahibi',
-                    'Servis',
-                    'Toplam',
-                    'Son Servis',
-                  ],
-                  bundle,
-                ),
+                _headerRow([
+                  'Sıra',
+                  'Plaka',
+                  'Araç Sahibi',
+                  'Servis',
+                  'Toplam',
+                  'Son Servis',
+                ], bundle),
                 for (var i = 0; i < rows.length; i++)
                   _dataRow(
                     [
@@ -332,7 +343,8 @@ abstract final class ReportsPdfExport {
   static Future<Uint8List> buildStockPdf({
     required DateTime start,
     required DateTime end,
-    required List<(String name, String category, int qty, double total)> partRows,
+    required List<(String name, String category, int qty, double total)>
+    partRows,
     required List<InventoryItem> criticalItems,
   }) async {
     final bundle = await PdfBranding.loadBundle();
@@ -351,11 +363,9 @@ abstract final class ReportsPdfExport {
         footer: (c) => _footer(c, bundle),
         build: (context) {
           return [
-            _companyTitle(bundle),
-            pw.SizedBox(height: 4),
+            _reportHeader(bundle, 'Stok Hareket Raporu', end),
+            pw.SizedBox(height: 10),
             _rangeSubtitle(bundle, start, end),
-            pw.SizedBox(height: 16),
-            _sectionTitle(bundle, 'Stok Hareket Raporu'),
             pw.SizedBox(height: 12),
             pw.Table(
               border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
@@ -366,15 +376,12 @@ abstract final class ReportsPdfExport {
                 3: const pw.FixedColumnWidth(56),
               },
               children: [
-                _headerRow(
-                  [
-                    'Parça Adı',
-                    'Kategori',
-                    'Adet',
-                    'Toplam Tutar',
-                  ],
-                  bundle,
-                ),
+                _headerRow([
+                  'Parça Adı',
+                  'Kategori',
+                  'Adet',
+                  'Toplam Tutar',
+                ], bundle),
                 for (var i = 0; i < partRows.length; i++)
                   _dataRow(
                     [
@@ -398,7 +405,10 @@ abstract final class ReportsPdfExport {
               )
             else
               pw.Table(
-                border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
+                border: pw.TableBorder.all(
+                  color: PdfBranding.border,
+                  width: 0.5,
+                ),
                 columnWidths: {
                   0: const pw.FlexColumnWidth(3),
                   1: const pw.FixedColumnWidth(44),
@@ -409,7 +419,10 @@ abstract final class ReportsPdfExport {
                   for (var i = 0; i < criticalItems.length; i++)
                     pw.TableRow(
                       decoration: pw.BoxDecoration(
-                        color: i.isEven ? PdfColors.white : PdfBranding.criticalRow,
+                        color:
+                            i.isEven
+                                ? PdfColors.white
+                                : PdfBranding.criticalRow,
                       ),
                       children: [
                         _cellText(criticalItems[i].name, bundle, bold: false),
@@ -456,14 +469,9 @@ abstract final class ReportsPdfExport {
     required DateTime start,
     required DateTime end,
     required List<
-            (
-              String name,
-              int services,
-              double revenue,
-              double avg,
-              String busiestDay,
-            )>
-        rows,
+      (String name, int services, double revenue, double avg, String busiestDay)
+    >
+    rows,
   }) async {
     final bundle = await PdfBranding.loadBundle();
     final doc = pw.Document(theme: bundle.theme);
@@ -481,11 +489,9 @@ abstract final class ReportsPdfExport {
         footer: (c) => _footer(c, bundle),
         build: (context) {
           return [
-            _companyTitle(bundle),
-            pw.SizedBox(height: 4),
+            _reportHeader(bundle, 'Teknisyen Raporu', end),
+            pw.SizedBox(height: 10),
             _rangeSubtitle(bundle, start, end),
-            pw.SizedBox(height: 16),
-            _sectionTitle(bundle, 'Teknisyen Raporu'),
             pw.SizedBox(height: 12),
             pw.Table(
               border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
@@ -497,16 +503,13 @@ abstract final class ReportsPdfExport {
                 4: const pw.FlexColumnWidth(2),
               },
               children: [
-                _headerRow(
-                  [
-                    'Teknisyen',
-                    'Servis',
-                    'Toplam Ciro',
-                    'Ort. Tutar',
-                    'En Yoğun Gün',
-                  ],
-                  bundle,
-                ),
+                _headerRow([
+                  'Teknisyen',
+                  'Servis',
+                  'Toplam Ciro',
+                  'Ort. Tutar',
+                  'En Yoğun Gün',
+                ], bundle),
                 for (var i = 0; i < rows.length; i++)
                   _dataRow(
                     [
@@ -561,59 +564,66 @@ abstract final class ReportsPdfExport {
         margin: const pw.EdgeInsets.all(24),
         theme: bundle.theme,
         footer: (c) => _footer(c, bundle),
-        build: (context) => [
-          _companyTitle(bundle),
-          pw.SizedBox(height: 4),
-          _rangeSubtitle(bundle, start, end),
-          pw.SizedBox(height: 16),
-          _sectionTitle(bundle, 'Gelir Raporu'),
-          pw.SizedBox(height: 12),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
-            columnWidths: {
-              0: const pw.FixedColumnWidth(72),
-              1: const pw.FixedColumnWidth(52),
-              2: const pw.FixedColumnWidth(72),
-              3: const pw.FixedColumnWidth(52),
-              4: const pw.FixedColumnWidth(52),
-              5: const pw.FixedColumnWidth(44),
-              6: const pw.FixedColumnWidth(52),
-            },
-            children: [
-              _headerRow(
-                [
-                  'Tarih',
-                  'Plaka',
-                  'Teknisyen',
-                  'Parça Top.',
-                  'İşçilik',
-                  'KDV',
-                  'Genel Top.',
-                ],
-                bundle,
-              ),
-              for (var i = 0; i < sorted.length; i++)
-                _dataRow(
-                  [
-                    DateFormat('d.MM.yyyy', 'tr_TR').format(sorted[i].date),
-                    AppFormatters.formatPlateDisplay(sorted[i].vehiclePlate),
-                    sorted[i].technicianName,
-                    moneyFmt.format(partsSum(sorted[i])),
-                    moneyFmt.format(laborSum(sorted[i])),
-                    moneyFmt.format(sorted[i].kdvAmount),
-                    moneyFmt.format(sorted[i].grandTotal),
-                  ],
-                  bundle,
-                  i,
+        build:
+            (context) => [
+              _reportHeader(bundle, 'Gelir Raporu', end),
+              pw.SizedBox(height: 10),
+              _rangeSubtitle(bundle, start, end),
+              pw.SizedBox(height: 12),
+              pw.Table(
+                border: pw.TableBorder.all(
+                  color: PdfBranding.border,
+                  width: 0.5,
                 ),
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(72),
+                  1: const pw.FixedColumnWidth(52),
+                  2: const pw.FixedColumnWidth(72),
+                  3: const pw.FixedColumnWidth(52),
+                  4: const pw.FixedColumnWidth(52),
+                  5: const pw.FixedColumnWidth(44),
+                  6: const pw.FixedColumnWidth(52),
+                },
+                children: [
+                  _headerRow([
+                    'Tarih',
+                    'Plaka',
+                    'Teknisyen',
+                    'Parça Top.',
+                    'İşçilik',
+                    'KDV',
+                    'Genel Top.',
+                  ], bundle),
+                  for (var i = 0; i < sorted.length; i++)
+                    _dataRow(
+                      [
+                        DateFormat('d.MM.yyyy', 'tr_TR').format(sorted[i].date),
+                        AppFormatters.formatPlateDisplay(
+                          sorted[i].vehiclePlate,
+                        ),
+                        sorted[i].technicianName,
+                        moneyFmt.format(partsSum(sorted[i])),
+                        moneyFmt.format(laborSum(sorted[i])),
+                        moneyFmt.format(sorted[i].kdvAmount),
+                        moneyFmt.format(sorted[i].grandTotal),
+                      ],
+                      bundle,
+                      i,
+                    ),
+                ],
+              ),
+              pw.SizedBox(height: 16),
+              _totalsBox(
+                bundle,
+                moneyFmt,
+                [
+                  ('Toplam KDV tutarı', totalKdv),
+                  ('KDV hariç toplam', totalExcl),
+                ],
+                'Genel toplam',
+                totalGrand,
+              ),
             ],
-          ),
-          pw.SizedBox(height: 16),
-          _totalsBox(bundle, moneyFmt, [
-            ('Toplam KDV tutarı', totalKdv),
-            ('KDV hariç toplam', totalExcl),
-          ], 'Genel toplam', totalGrand),
-        ],
       ),
     );
 
@@ -624,59 +634,60 @@ abstract final class ReportsPdfExport {
         margin: const pw.EdgeInsets.all(24),
         theme: bundle.theme,
         footer: (c) => _footer(c, bundle),
-        build: (context) => [
-          _companyTitle(bundle),
-          pw.SizedBox(height: 4),
-          _rangeSubtitle(bundle, start, end),
-          pw.SizedBox(height: 16),
-          _sectionTitle(bundle, 'Araç Raporu'),
-          pw.SizedBox(height: 12),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
-            columnWidths: {
-              0: const pw.FixedColumnWidth(28),
-              1: const pw.FixedColumnWidth(52),
-              2: const pw.FlexColumnWidth(2),
-              3: const pw.FixedColumnWidth(48),
-              4: const pw.FixedColumnWidth(56),
-              5: const pw.FixedColumnWidth(72),
-            },
-            children: [
-              _headerRow(
-                [
-                  'Sıra',
-                  'Plaka',
-                  'Araç Sahibi',
-                  'Servis',
-                  'Toplam',
-                  'Son Servis',
-                ],
-                bundle,
-              ),
-              for (var i = 0; i < vehicleRows.length; i++)
-                _dataRow(
-                  [
-                    '${i + 1}',
-                    AppFormatters.formatPlateDisplay(vehicleRows[i].$1),
-                    vehicleRows[i].$2,
-                    '${vehicleRows[i].$3}',
-                    moneyFmt.format(vehicleRows[i].$4),
-                    DateFormat('d.MM.yyyy', 'tr_TR').format(vehicleRows[i].$5),
-                  ],
-                  bundle,
-                  i,
+        build:
+            (context) => [
+              _reportHeader(bundle, 'Araç Raporu', end),
+              pw.SizedBox(height: 10),
+              _rangeSubtitle(bundle, start, end),
+              pw.SizedBox(height: 12),
+              pw.Table(
+                border: pw.TableBorder.all(
+                  color: PdfBranding.border,
+                  width: 0.5,
                 ),
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(28),
+                  1: const pw.FixedColumnWidth(52),
+                  2: const pw.FlexColumnWidth(2),
+                  3: const pw.FixedColumnWidth(48),
+                  4: const pw.FixedColumnWidth(56),
+                  5: const pw.FixedColumnWidth(72),
+                },
+                children: [
+                  _headerRow([
+                    'Sıra',
+                    'Plaka',
+                    'Araç Sahibi',
+                    'Servis',
+                    'Toplam',
+                    'Son Servis',
+                  ], bundle),
+                  for (var i = 0; i < vehicleRows.length; i++)
+                    _dataRow(
+                      [
+                        '${i + 1}',
+                        AppFormatters.formatPlateDisplay(vehicleRows[i].$1),
+                        vehicleRows[i].$2,
+                        '${vehicleRows[i].$3}',
+                        moneyFmt.format(vehicleRows[i].$4),
+                        DateFormat(
+                          'd.MM.yyyy',
+                          'tr_TR',
+                        ).format(vehicleRows[i].$5),
+                      ],
+                      bundle,
+                      i,
+                    ),
+                ],
+              ),
             ],
-          ),
-        ],
       ),
     );
 
     final partAgg = aggregateParts(records, allInventory);
-    final critical = allInventory
-        .where((e) => e.quantity <= e.minStockAlert)
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final critical =
+        allInventory.where((e) => e.quantity <= e.minStockAlert).toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
     doc.addPage(
       pw.MultiPage(
@@ -684,84 +695,89 @@ abstract final class ReportsPdfExport {
         margin: const pw.EdgeInsets.all(24),
         theme: bundle.theme,
         footer: (c) => _footer(c, bundle),
-        build: (context) => [
-          _companyTitle(bundle),
-          pw.SizedBox(height: 4),
-          _rangeSubtitle(bundle, start, end),
-          pw.SizedBox(height: 16),
-          _sectionTitle(bundle, 'Stok Hareket Raporu'),
-          pw.SizedBox(height: 12),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(3),
-              1: const pw.FlexColumnWidth(2),
-              2: const pw.FixedColumnWidth(48),
-              3: const pw.FixedColumnWidth(56),
-            },
-            children: [
-              _headerRow(
-                [
-                  'Parça Adı',
-                  'Kategori',
-                  'Adet',
-                  'Toplam Tutar',
+        build:
+            (context) => [
+              _reportHeader(bundle, 'Stok Hareket Raporu', end),
+              pw.SizedBox(height: 10),
+              _rangeSubtitle(bundle, start, end),
+              pw.SizedBox(height: 12),
+              pw.Table(
+                border: pw.TableBorder.all(
+                  color: PdfBranding.border,
+                  width: 0.5,
+                ),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(3),
+                  1: const pw.FlexColumnWidth(2),
+                  2: const pw.FixedColumnWidth(48),
+                  3: const pw.FixedColumnWidth(56),
+                },
+                children: [
+                  _headerRow([
+                    'Parça Adı',
+                    'Kategori',
+                    'Adet',
+                    'Toplam Tutar',
+                  ], bundle),
+                  for (var i = 0; i < partAgg.length; i++)
+                    _dataRow(
+                      [
+                        partAgg[i].$1,
+                        partAgg[i].$2,
+                        '${partAgg[i].$3}',
+                        moneyFmt.format(partAgg[i].$4),
+                      ],
+                      bundle,
+                      i,
+                    ),
                 ],
-                bundle,
               ),
-              for (var i = 0; i < partAgg.length; i++)
-                _dataRow(
-                  [
-                    partAgg[i].$1,
-                    partAgg[i].$2,
-                    '${partAgg[i].$3}',
-                    moneyFmt.format(partAgg[i].$4),
+              pw.SizedBox(height: 14),
+              _sectionTitle(bundle, 'Kritik stok uyarısı'),
+              pw.SizedBox(height: 6),
+              if (critical.isEmpty)
+                pw.Text(
+                  'Kritik seviyede parça yok.',
+                  style: pw.TextStyle(font: bundle.regular, fontSize: 9),
+                )
+              else
+                pw.Table(
+                  border: pw.TableBorder.all(
+                    color: PdfBranding.border,
+                    width: 0.5,
+                  ),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(3),
+                    1: const pw.FixedColumnWidth(44),
+                    2: const pw.FixedColumnWidth(44),
+                  },
+                  children: [
+                    _headerRow(['Parça', 'Mevcut', 'Minimum'], bundle),
+                    for (var i = 0; i < critical.length; i++)
+                      pw.TableRow(
+                        decoration: pw.BoxDecoration(
+                          color:
+                              i.isEven
+                                  ? PdfColors.white
+                                  : PdfBranding.criticalRow,
+                        ),
+                        children: [
+                          _cellText(critical[i].name, bundle, bold: false),
+                          _cellText(
+                            '${critical[i].quantity}',
+                            bundle,
+                            bold: true,
+                          ),
+                          _cellText(
+                            '${critical[i].minStockAlert}',
+                            bundle,
+                            bold: false,
+                          ),
+                        ],
+                      ),
                   ],
-                  bundle,
-                  i,
                 ),
             ],
-          ),
-          pw.SizedBox(height: 14),
-          _sectionTitle(bundle, 'Kritik stok uyarısı'),
-          pw.SizedBox(height: 6),
-          if (critical.isEmpty)
-            pw.Text(
-              'Kritik seviyede parça yok.',
-              style: pw.TextStyle(font: bundle.regular, fontSize: 9),
-            )
-          else
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
-              columnWidths: {
-                0: const pw.FlexColumnWidth(3),
-                1: const pw.FixedColumnWidth(44),
-                2: const pw.FixedColumnWidth(44),
-              },
-              children: [
-                _headerRow(['Parça', 'Mevcut', 'Minimum'], bundle),
-                for (var i = 0; i < critical.length; i++)
-                  pw.TableRow(
-                    decoration: pw.BoxDecoration(
-                      color: i.isEven ? PdfColors.white : PdfBranding.criticalRow,
-                    ),
-                    children: [
-                      _cellText(critical[i].name, bundle, bold: false),
-                      _cellText(
-                        '${critical[i].quantity}',
-                        bundle,
-                        bold: true,
-                      ),
-                      _cellText(
-                        '${critical[i].minStockAlert}',
-                        bundle,
-                        bold: false,
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-        ],
       ),
     );
 
@@ -772,48 +788,47 @@ abstract final class ReportsPdfExport {
         margin: const pw.EdgeInsets.all(24),
         theme: bundle.theme,
         footer: (c) => _footer(c, bundle),
-        build: (context) => [
-          _companyTitle(bundle),
-          pw.SizedBox(height: 4),
-          _rangeSubtitle(bundle, start, end),
-          pw.SizedBox(height: 16),
-          _sectionTitle(bundle, 'Teknisyen Raporu'),
-          pw.SizedBox(height: 12),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(2.5),
-              1: const pw.FixedColumnWidth(44),
-              2: const pw.FixedColumnWidth(56),
-              3: const pw.FixedColumnWidth(56),
-              4: const pw.FlexColumnWidth(2),
-            },
-            children: [
-              _headerRow(
-                [
-                  'Teknisyen',
-                  'Servis',
-                  'Toplam Ciro',
-                  'Ort. Tutar',
-                  'En Yoğun Gün',
-                ],
-                bundle,
-              ),
-              for (var i = 0; i < techRows.length; i++)
-                _dataRow(
-                  [
-                    techRows[i].$1,
-                    '${techRows[i].$2}',
-                    moneyFmt.format(techRows[i].$3),
-                    moneyFmt.format(techRows[i].$4),
-                    techRows[i].$5,
-                  ],
-                  bundle,
-                  i,
+        build:
+            (context) => [
+              _reportHeader(bundle, 'Teknisyen Raporu', end),
+              pw.SizedBox(height: 10),
+              _rangeSubtitle(bundle, start, end),
+              pw.SizedBox(height: 12),
+              pw.Table(
+                border: pw.TableBorder.all(
+                  color: PdfBranding.border,
+                  width: 0.5,
                 ),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(2.5),
+                  1: const pw.FixedColumnWidth(44),
+                  2: const pw.FixedColumnWidth(56),
+                  3: const pw.FixedColumnWidth(56),
+                  4: const pw.FlexColumnWidth(2),
+                },
+                children: [
+                  _headerRow([
+                    'Teknisyen',
+                    'Servis',
+                    'Toplam Ciro',
+                    'Ort. Tutar',
+                    'En Yoğun Gün',
+                  ], bundle),
+                  for (var i = 0; i < techRows.length; i++)
+                    _dataRow(
+                      [
+                        techRows[i].$1,
+                        '${techRows[i].$2}',
+                        moneyFmt.format(techRows[i].$3),
+                        moneyFmt.format(techRows[i].$4),
+                        techRows[i].$5,
+                      ],
+                      bundle,
+                      i,
+                    ),
+                ],
+              ),
             ],
-          ),
-        ],
       ),
     );
 
@@ -821,8 +836,10 @@ abstract final class ReportsPdfExport {
   }
 
   /// Ekran tabloları ile aynı satır üretimi.
-  static List<(String plate, String owner, int count, double spend, DateTime last)>
-      vehicleRowsFromRecords(
+  static List<
+    (String plate, String owner, int count, double spend, DateTime last)
+  >
+  vehicleRowsFromRecords(
     List<ServiceRecord> records,
     Map<String, Vehicle> vehiclesByPlate,
   ) {
@@ -837,19 +854,18 @@ abstract final class ReportsPdfExport {
         last: last,
       );
     }
-    final list = map.entries.map((e) {
-      final v = vehiclesByPlate[e.key];
-      final owner = v?.ownerName ?? '—';
-      return (e.key, owner, e.value.c, e.value.s, e.value.last);
-    }).toList();
+    final list =
+        map.entries.map((e) {
+          final v = vehiclesByPlate[e.key];
+          final owner = v?.ownerName ?? '—';
+          return (e.key, owner, e.value.c, e.value.s, e.value.last);
+        }).toList();
     list.sort((a, b) => b.$3.compareTo(a.$3));
     return list;
   }
 
-  static List<(String name, String category, int qty, double total)> aggregateParts(
-    List<ServiceRecord> records,
-    List<InventoryItem> inventory,
-  ) {
+  static List<(String name, String category, int qty, double total)>
+  aggregateParts(List<ServiceRecord> records, List<InventoryItem> inventory) {
     final byId = {for (final i in inventory) i.id: i};
     final byName = <String, InventoryItem>{};
     for (final i in inventory) {
@@ -862,8 +878,7 @@ abstract final class ReportsPdfExport {
         final inv = byId[pt.partId] ?? byName[pt.partName];
         final cat = inv?.category ?? '—';
         final prev = agg[pt.partName];
-        final resolvedCat =
-            (prev != null && prev.cat != '—') ? prev.cat : cat;
+        final resolvedCat = (prev != null && prev.cat != '—') ? prev.cat : cat;
         agg[pt.partName] = (
           q: (prev?.q ?? 0) + pt.quantity,
           t: (prev?.t ?? 0) + pt.totalPrice,
@@ -871,21 +886,18 @@ abstract final class ReportsPdfExport {
         );
       }
     }
-    final out = agg.entries
-        .map((e) => (e.key, e.value.cat, e.value.q, e.value.t))
-        .toList();
+    final out =
+        agg.entries
+            .map((e) => (e.key, e.value.cat, e.value.q, e.value.t))
+            .toList();
     out.sort((a, b) => b.$4.compareTo(a.$4));
     return out;
   }
 
   static List<
-      (
-        String name,
-        int services,
-        double revenue,
-        double avg,
-        String busiestDay,
-      )> technicianRows(List<ServiceRecord> records) {
+    (String name, int services, double revenue, double avg, String busiestDay)
+  >
+  technicianRows(List<ServiceRecord> records) {
     final byTech = <String, ({int n, double rev, Map<DateTime, int> days})>{};
     for (final r in records) {
       final name = r.technicianName.trim().isEmpty ? '—' : r.technicianName;

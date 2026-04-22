@@ -38,7 +38,7 @@ class AppSidebar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
                         height: 78,
-                        color: const Color(0xFF0B1228),
+                        color: const Color(0xFF1A1A1A),
                         alignment: Alignment.center,
                         child: Image.asset(
                           'assets/images/app_logo.png',
@@ -186,8 +186,8 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = selected ? const Color(0xFF334155) : Colors.transparent;
-    final fg = selected ? Colors.white : Colors.white70;
+    final bg = selected ? AppColors.secondaryOrange : Colors.transparent;
+    final fg = selected ? Colors.black : Colors.white70;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),

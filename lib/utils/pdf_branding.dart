@@ -9,20 +9,23 @@ class PdfBrandingBundle {
     required this.regular,
     required this.bold,
     required this.theme,
+    required this.logo,
   });
 
   final pw.Font regular;
   final pw.Font bold;
   final pw.ThemeData theme;
+  final pw.MemoryImage logo;
 }
 
 abstract final class PdfBranding {
-  static final PdfColor navy = PdfColor.fromHex('1a237e');
-  static final PdfColor softBlue = PdfColor.fromHex('90caf9');
-  static final PdfColor zebra = PdfColor.fromHex('e8eaf6');
-  static final PdfColor criticalRow = PdfColor.fromHex('ffebee');
-  static final PdfColor border = PdfColor.fromHex('c5cae9');
-  static final PdfColor totalBorder = PdfColor.fromHex('3f51b5');
+  static final PdfColor navy = PdfColor.fromHex('121212');
+  static final PdfColor softBlue = PdfColor.fromHex('fde68a');
+  static final PdfColor zebra = PdfColor.fromHex('fffbea');
+  static final PdfColor criticalRow = PdfColor.fromHex('fff6cc');
+  static final PdfColor border = PdfColor.fromHex('e5d37a');
+  static final PdfColor totalBorder = PdfColor.fromHex('c9a700');
+  static final PdfColor gold = PdfColor.fromHex('facc15');
 
   static PdfBrandingBundle? _cache;
 
@@ -36,11 +39,14 @@ abstract final class PdfBranding {
 
     final regular = pw.Font.ttf(regularData);
     final bold = pw.Font.ttf(boldData);
+    final logoData = await rootBundle.load('assets/images/app_logo.png');
+    final logo = pw.MemoryImage(logoData.buffer.asUint8List());
 
     final bundle = PdfBrandingBundle(
       regular: regular,
       bold: bold,
       theme: pw.ThemeData.withFont(base: regular, bold: bold),
+      logo: logo,
     );
     _cache = bundle;
     return bundle;
@@ -60,48 +66,67 @@ abstract final class PdfBranding {
       decoration: pw.BoxDecoration(
         color: navy,
         borderRadius: pw.BorderRadius.circular(8),
+        border: pw.Border.all(color: totalBorder, width: 1.2),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Expanded(
-            child: pw.Column(
+            child: pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(
-                  companyName.toUpperCase(),
-                  style: pw.TextStyle(
-                    font: bundle.bold,
-                    fontSize: 24,
-                    color: PdfColors.white,
+                pw.Container(
+                  width: 58,
+                  height: 58,
+                  padding: const pw.EdgeInsets.all(7),
+                  decoration: pw.BoxDecoration(
+                    color: gold,
+                    borderRadius: pw.BorderRadius.circular(10),
                   ),
+                  child: pw.Image(bundle.logo, fit: pw.BoxFit.contain),
                 ),
-                pw.SizedBox(height: 4),
-                pw.Text(
-                  companySubtitle,
-                  style: pw.TextStyle(
-                    font: bundle.regular,
-                    fontSize: 11,
-                    color: softBlue,
-                  ),
-                ),
-                pw.SizedBox(height: 4),
-                pw.Text(
-                  'Tel: $companyPhone',
-                  style: pw.TextStyle(
-                    font: bundle.regular,
-                    fontSize: 10,
-                    color: PdfColors.white,
-                  ),
-                ),
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  companyAddress,
-                  style: pw.TextStyle(
-                    font: bundle.regular,
-                    fontSize: 9,
-                    color: PdfColors.white,
+                pw.SizedBox(width: 12),
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        companyName.toUpperCase(),
+                        style: pw.TextStyle(
+                          font: bundle.bold,
+                          fontSize: 24,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        companySubtitle,
+                        style: pw.TextStyle(
+                          font: bundle.regular,
+                          fontSize: 11,
+                          color: softBlue,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Tel: $companyPhone',
+                        style: pw.TextStyle(
+                          font: bundle.regular,
+                          fontSize: 10,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        companyAddress,
+                        style: pw.TextStyle(
+                          font: bundle.regular,
+                          fontSize: 9,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -116,7 +141,7 @@ abstract final class PdfBranding {
                 style: pw.TextStyle(
                   font: bundle.bold,
                   fontSize: 16,
-                  color: PdfColors.white,
+                  color: gold,
                 ),
               ),
               pw.SizedBox(height: 4),

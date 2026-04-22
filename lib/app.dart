@@ -132,14 +132,33 @@ class _AppState extends State<App> {
       theme: ThemeData(
         colorScheme: colorScheme,
         useMaterial3: true,
+        scaffoldBackgroundColor: AppColors.surfaceMuted,
         appBarTheme: AppBarTheme(
           backgroundColor: colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primaryNavy,
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.secondaryOrange,
+            foregroundColor: Colors.black,
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.black,
+            side: BorderSide(
+              color: AppColors.secondaryOrange.withValues(alpha: 0.9),
+            ),
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          selectedColor: AppColors.secondaryOrange,
+          backgroundColor: Colors.white,
+          labelStyle: const TextStyle(color: Colors.black87),
+          side: const BorderSide(color: Color(0xFFE4D67A)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),

@@ -175,7 +175,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                                colors: [Color(0xFF121212), Color(0xFF6B5A00)],
                               ),
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: const [
