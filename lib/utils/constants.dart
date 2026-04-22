@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const String companyName = 'Canal Oto Servis';
+const String companyName = 'Mert Opel Servis';
 const String companySubtitle = 'Profesyonel Araç Bakım Merkezi';
 const String companyPhone = '0XXX XXX XX XX';
 const String companyAddress = 'Adres bilgisi';

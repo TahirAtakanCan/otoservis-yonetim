@@ -9,13 +9,20 @@ import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
 class VehicleSearchScreen extends StatefulWidget {
-  const VehicleSearchScreen({super.key});
+  const VehicleSearchScreen({
+    super.key,
+    this.flow,
+  });
+
+  final String? flow;
 
   @override
   State<VehicleSearchScreen> createState() => _VehicleSearchScreenState();
 }
 
 class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
+  bool get _serviceFlow => widget.flow == 'service';
+
   final _plateController = TextEditingController();
   bool _loading = false;
   String? _error;
@@ -57,7 +64,11 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
 
       if (vehicle != null) {
         vp.setSelectedVehicle(vehicle);
-        context.go('/vehicle/$plate/history');
+        if (_serviceFlow) {
+          context.go('/service/new?plate=$plate');
+        } else {
+          context.go('/vehicle/$plate/history');
+        }
         return;
       }
 
@@ -262,13 +273,17 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                           const SizedBox(height: 16),
                         ],
                         Text(
-                          'Plaka ile araç ara',
+                          _serviceFlow
+                              ? 'Servis için araç ara'
+                              : 'Plaka ile araç ara',
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Plaka büyük harfe çevrilir, boşluklar birleştirilir.',
+                          _serviceFlow
+                              ? 'Kayıtlı plakayı bulup doğrudan yeni servis ekranına geçin.'
+                              : 'Plaka büyük harfe çevrilir, boşluklar birleştirilir.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: Colors.black54,
                               ),
@@ -328,7 +343,7 @@ class _VehicleSearchScreenState extends State<VehicleSearchScreen> {
                                     ),
                                   )
                                 : const Text(
-                                    'Ara',
+                                    'Devam et',
                                     style: TextStyle(fontSize: 18),
                                   ),
                           ),

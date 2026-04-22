@@ -30,20 +30,37 @@ class AppSidebar extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => context.go('/'),
-              child: const Padding(
-                padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
-                child: Row(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.car_repair, color: Colors.white, size: 28),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        BusinessInfo.name,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        height: 78,
+                        color: const Color(0xFF0B1228),
+                        alignment: Alignment.center,
+                        child: Image.asset(
+                          'assets/images/app_logo.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.car_repair,
+                            color: Colors.white70,
+                            size: 34,
+                          ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      BusinessInfo.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -83,6 +100,12 @@ class AppSidebar extends StatelessWidget {
                       ),
                     );
                   },
+                ),
+                _SidebarTile(
+                  icon: Icons.build_circle_outlined,
+                  label: 'Yeni Servis',
+                  selected: location == '/service/new',
+                  onTap: () => context.go('/vehicle-search?flow=service'),
                 ),
                 _SidebarTile(
                   icon: Icons.directions_car_outlined,

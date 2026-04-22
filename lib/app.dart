@@ -78,7 +78,9 @@ class _AppState extends State<App> {
         ),
         GoRoute(
           path: '/vehicle-search',
-          builder: (context, state) => const VehicleSearchScreen(),
+          builder: (context, state) => VehicleSearchScreen(
+            flow: state.uri.queryParameters['flow'],
+          ),
         ),
         GoRoute(
           path: '/vehicles',

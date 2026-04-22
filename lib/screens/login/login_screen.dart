@@ -77,19 +77,32 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.car_repair,
-                            color: Colors.white,
-                            size: 60,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              height: 90,
+                              width: 200,
+                              color: const Color(0xFF0B1228),
+                              alignment: Alignment.center,
+                              child: Image.asset(
+                                'assets/images/app_logo.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.car_repair,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            BusinessInfo.name.toUpperCase(),
+                            BusinessInfo.name,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 32,
+                              fontSize: 26,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
+                              letterSpacing: 0.6,
                             ),
                           ),
                           const SizedBox(height: 10),

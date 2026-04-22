@@ -118,6 +118,18 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Önce canlı envanter listesinde büyük/küçük harf duyarsız filtrele.
+      // Bu sayede "Metal" / "metal" farkı yüzünden sonuç kaçmaz.
+      if (_allItems.isNotEmpty) {
+        final lower = q.toLowerCase();
+        _lastResults = _allItems
+            .where((item) => item.name.toLowerCase().contains(lower))
+            .take(40)
+            .toList();
+        notifyListeners();
+        return _lastResults;
+      }
+
       final snap = await _firestore
           .collection(FirestoreCollections.inventory)
           .orderBy('name')
