@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/providers/auth_provider.dart';
+import 'package:otoservis_app/providers/connectivity_notifier.dart';
 import 'package:otoservis_app/providers/inventory_provider.dart';
 import 'package:otoservis_app/providers/service_provider.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
@@ -385,6 +386,18 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       return;
     }
 
+    if (!context.read<ConnectivityNotifier>().isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Stok düşümü ve güvenli servis kaydı için internet gerekir. '
+            'Bağlantı gelince tekrar deneyin.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final user = auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(
@@ -435,6 +448,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   Widget build(BuildContext context) {
     final inv = context.watch<InventoryProvider>();
     final svc = context.watch<ServiceProvider>();
+    final online = context.watch<ConnectivityNotifier>().isOnline;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceMuted,
@@ -538,7 +552,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                             const SizedBox(width: 10),
                             SizedBox(
                               width: _rightWidth,
-                              child: _buildRightPanel(svc.isSaving),
+                              child: _buildRightPanel(saving: svc.isSaving, online: online),
                             ),
                           ],
                         ),
@@ -911,7 +925,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     );
   }
 
-  Widget _buildRightPanel(bool saving) {
+  Widget _buildRightPanel({required bool saving, required bool online}) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1035,7 +1049,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
-              onPressed: saving ? null : _complete,
+              onPressed: (saving || !online) ? null : _complete,
               icon: const Icon(Icons.check_circle_outline),
               label:
                   saving
@@ -1047,7 +1061,11 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                           color: Colors.white,
                         ),
                       )
-                      : const Text('Servisi tamamla'),
+                      : Text(
+                        online
+                            ? 'Servisi tamamla'
+                            : 'Servisi tamamla (internet gerekir)',
+                      ),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),

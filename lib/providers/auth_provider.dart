@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:otoservis_app/models/app_user.dart';
+import 'package:otoservis_app/services/firestore_cache_warmer.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider({
@@ -90,6 +91,7 @@ class AuthProvider extends ChangeNotifier {
         'role': 'technician',
       });
     } finally {
+      unawaited(FirestoreCacheWarmer.warmUp(_firestore));
       if (!_authStateKnown) {
         _authStateKnown = true;
       }
