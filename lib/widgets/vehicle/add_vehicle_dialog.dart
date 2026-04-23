@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
+import 'package:otoservis_app/utils/formatters.dart';
 
 Future<Vehicle?> showAddVehicleDialog(
   BuildContext context, {
@@ -59,15 +60,14 @@ Future<Vehicle?> showAddVehicleDialog(
                       TextFormField(
                         controller: phoneCtrl,
                         keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          TurkishMobilePhoneTextInputFormatter(),
+                        ],
                         decoration: const InputDecoration(
                           labelText: 'Telefon',
                           border: OutlineInputBorder(),
                         ),
-                        validator:
-                            (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? 'Zorunlu'
-                                    : null,
+                        validator: AppFormatters.validateVehiclePhone,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -167,7 +167,10 @@ Future<Vehicle?> showAddVehicleDialog(
                               final vehicle = Vehicle(
                                 plate: normalizedPlate,
                                 ownerName: ownerNameCtrl.text.trim(),
-                                ownerPhone: phoneCtrl.text.trim(),
+                                ownerPhone:
+                                    AppFormatters.normalizePhoneDigits(
+                                  phoneCtrl.text,
+                                ),
                                 brand: brandCtrl.text.trim(),
                                 model: modelCtrl.text.trim(),
                                 year: int.parse(yearCtrl.text.trim()),

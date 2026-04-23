@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
+import 'package:otoservis_app/utils/formatters.dart';
 
 /// `true` döner: kayıt güncellendi veya araç silindi (liste yenilensin).
 Future<bool?> showEditVehicleDialog(
@@ -10,7 +11,11 @@ Future<bool?> showEditVehicleDialog(
   Vehicle vehicle,
 ) async {
   final ownerNameCtrl = TextEditingController(text: vehicle.ownerName);
-  final phoneCtrl = TextEditingController(text: vehicle.ownerPhone);
+  final phoneCtrl = TextEditingController(
+    text: AppFormatters.formatTurkishPhoneForDisplay(
+      AppFormatters.normalizePhoneDigits(vehicle.ownerPhone),
+    ),
+  );
   final brandCtrl = TextEditingController(text: vehicle.brand);
   final modelCtrl = TextEditingController(text: vehicle.model);
   final yearCtrl = TextEditingController(text: '${vehicle.year}');
@@ -120,7 +125,7 @@ class _EditVehicleDialogBodyState extends State<_EditVehicleDialogBody> {
       await vp.updateVehicleDetails(
         plate: widget.vehicle.plate,
         ownerName: widget.ownerNameCtrl.text,
-        ownerPhone: widget.phoneCtrl.text,
+        ownerPhone: AppFormatters.normalizePhoneDigits(widget.phoneCtrl.text),
         brand: widget.brandCtrl.text,
         model: widget.modelCtrl.text,
         year: int.parse(widget.yearCtrl.text.trim()),
@@ -171,12 +176,12 @@ class _EditVehicleDialogBodyState extends State<_EditVehicleDialogBody> {
               TextFormField(
                 controller: widget.phoneCtrl,
                 keyboardType: TextInputType.phone,
+                inputFormatters: [TurkishMobilePhoneTextInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Telefon',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Zorunlu' : null,
+                validator: AppFormatters.validateVehiclePhone,
               ),
               const SizedBox(height: 12),
               TextFormField(

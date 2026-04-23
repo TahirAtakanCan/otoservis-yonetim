@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
 import 'package:otoservis_app/utils/constants.dart';
+import 'package:otoservis_app/utils/formatters.dart';
 import 'package:otoservis_app/widgets/common/app_error_banner.dart';
 import 'package:otoservis_app/widgets/common/app_sidebar.dart';
 
@@ -74,7 +75,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
       final vehicle = Vehicle(
         plate: normalizedPlate,
         ownerName: _ownerNameCtrl.text.trim(),
-        ownerPhone: _phoneCtrl.text.trim(),
+        ownerPhone: AppFormatters.normalizePhoneDigits(_phoneCtrl.text),
         brand: _brandCtrl.text.trim(),
         model: _modelCtrl.text.trim(),
         year: int.parse(_yearCtrl.text.trim()),
@@ -291,13 +292,10 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                                             controller: _phoneCtrl,
                                             label: 'Telefon',
                                             keyboardType: TextInputType.phone,
-                                            validator: (v) {
-                                              if (v == null ||
-                                                  v.trim().isEmpty) {
-                                                return 'Zorunlu';
-                                              }
-                                              return null;
-                                            },
+                                            inputFormatters: [
+                                              TurkishMobilePhoneTextInputFormatter(),
+                                            ],
+                                            validator: AppFormatters.validateVehiclePhone,
                                           ),
                                         ),
                                         SizedBox(
