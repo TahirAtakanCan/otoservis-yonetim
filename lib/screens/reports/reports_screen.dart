@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -192,14 +193,38 @@ class _ReportsScreenState extends State<ReportsScreen>
     _recordsFuture = null;
   }
 
-  Future<void> _persistPdfBytes(List<int> bytes, String filename) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(bytes);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF kaydedildi: ${file.path}')),
-    );
+  Future<void> _persistPdfBytes(Uint8List bytes, String filename) async {
+    if (kIsWeb) return;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF kaydedildi: ${file.path}')),
+      );
+    } catch (_) {
+      // Yerel kaydetme başarısız olsa bile indirme/yazdırma adımına devam edilir.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'PDF cihaza kaydedilemedi. İndirme/yazdırma penceresi açılıyor.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _sharePdfWithFallback(
+    Uint8List bytes,
+    String filename,
+  ) async {
+    try {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    } catch (_) {
+      await Printing.layoutPdf(onLayout: (_) async => bytes);
+    }
   }
 
   Future<void> _exportFullPdf() async {
@@ -221,10 +246,10 @@ class _ReportsScreenState extends State<ReportsScreen>
         vehiclesByPlate: vehicles,
         allInventory: inventory,
       );
-      await _persistPdfBytes(bytes, 'canal_otoservis_tum_rapor.pdf');
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: 'canal_otoservis_tum_rapor.pdf',
+      await _persistPdfBytes(bytes, 'mert_otoservis_tum_rapor.pdf');
+      await _sharePdfWithFallback(
+        bytes,
+        'mert_otoservis_tum_rapor.pdf',
       );
     } catch (e) {
       if (!mounted) return;
@@ -334,7 +359,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: const Text('Tüm Raporu İndir'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: _navyBox,
+                            backgroundColor: AppColors.secondaryOrange,
+                            foregroundColor: Colors.black,
                           ),
                         ),
                       ],
@@ -449,7 +475,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         records: records,
       );
       await _persistPdfBytes(bytes, 'gelir_raporu.pdf');
-      await Printing.sharePdf(bytes: bytes, filename: 'gelir_raporu.pdf');
+      await _sharePdfWithFallback(bytes, 'gelir_raporu.pdf');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -472,7 +498,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         rows: rows,
       );
       await _persistPdfBytes(bytes, 'arac_raporu.pdf');
-      await Printing.sharePdf(bytes: bytes, filename: 'arac_raporu.pdf');
+      await _sharePdfWithFallback(bytes, 'arac_raporu.pdf');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -496,10 +522,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         criticalItems: critical,
       );
       await _persistPdfBytes(bytes, 'stok_hareket_raporu.pdf');
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: 'stok_hareket_raporu.pdf',
-      );
+      await _sharePdfWithFallback(bytes, 'stok_hareket_raporu.pdf');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -518,7 +541,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         rows: rows,
       );
       await _persistPdfBytes(bytes, 'teknisyen_raporu.pdf');
-      await Printing.sharePdf(bytes: bytes, filename: 'teknisyen_raporu.pdf');
+      await _sharePdfWithFallback(bytes, 'teknisyen_raporu.pdf');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

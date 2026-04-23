@@ -150,4 +150,42 @@ class VehicleProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  /// Tek bir servis kaydını belge ID üzerinden siler.
+  Future<void> deleteServiceRecordById(String serviceId) async {
+    final id = serviceId.trim();
+    if (id.isEmpty) throw ArgumentError('Geçersiz servis kaydı');
+
+    await _firestore
+        .collection(FirestoreCollections.serviceRecords)
+        .doc(id)
+        .delete();
+    notifyListeners();
+  }
+
+  /// Bir araca ait tüm servis kayıtlarını siler; araç kaydı korunur.
+  /// Dönüş: silinen kayıt adedi.
+  Future<int> deleteServiceHistoryForPlate(String plate) async {
+    final key = normalizePlate(plate);
+    if (key.isEmpty) throw ArgumentError('Geçersiz plaka');
+
+    final recordsSnap = await _firestore
+        .collection(FirestoreCollections.serviceRecords)
+        .where('vehiclePlate', isEqualTo: key)
+        .get();
+
+    const chunkSize = 450;
+    final docs = recordsSnap.docs;
+    for (var i = 0; i < docs.length; i += chunkSize) {
+      final batch = _firestore.batch();
+      final end = math.min(i + chunkSize, docs.length);
+      for (var j = i; j < end; j++) {
+        batch.delete(docs[j].reference);
+      }
+      await batch.commit();
+    }
+
+    notifyListeners();
+    return docs.length;
+  }
 }

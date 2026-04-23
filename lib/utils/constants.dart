@@ -10,6 +10,7 @@ abstract final class FirestoreCollections {
   static const String vehicles = 'vehicles';
   static const String serviceRecords = 'service_records';
   static const String inventory = 'inventory';
+  static const String inventoryCategories = 'inventory_categories';
 }
 
 /// Uygulama renk paleti (Material 3 ile birlikte kullanın).
@@ -41,13 +42,16 @@ abstract final class KdvRates {
 
 /// Parça / stok kategorileri (Firestore `category` alanı ile aynı metinler).
 abstract final class PartCategories {
-  static const List<String> all = [
+  static const List<String> defaults = [
     'Yağlar',
     'Filtreler',
     'Frenler',
     'Elektrik',
     'Diğer',
   ];
+
+  /// Geriye dönük kullanım için varsayılan liste.
+  static const List<String> all = defaults;
 }
 
 /// Geriye dönük uyumluluk — [PartCategories] kullanın.

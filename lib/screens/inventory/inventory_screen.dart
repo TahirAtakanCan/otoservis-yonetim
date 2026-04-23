@@ -37,8 +37,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   List<InventoryItem> _filtered(List<InventoryItem> all) {
     final q = _searchController.text.trim().toLowerCase();
+    final activeCategory =
+        _categoryFilter != null && all.any((e) => e.category == _categoryFilter)
+            ? _categoryFilter
+            : null;
     return all.where((e) {
-      if (_categoryFilter != null && e.category != _categoryFilter) {
+      if (activeCategory != null && e.category != activeCategory) {
         return false;
       }
       if (q.isEmpty) return true;
@@ -55,7 +59,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<void> _showPartForm({InventoryItem? existing}) async {
+    final inv = context.read<InventoryProvider>();
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final availableCategories = [...inv.categories];
+    final initialCategory =
+        existing?.category ??
+        (availableCategories.isNotEmpty
+            ? availableCategories.first
+            : PartCategories.defaults.first);
+    if (!availableCategories.contains(initialCategory)) {
+      availableCategories.add(initialCategory);
+    }
+    availableCategories.sort(
+      (a, b) => a.toLowerCase().compareTo(b.toLowerCase()),
+    );
+    final categoryCtrl = TextEditingController(text: initialCategory);
     final qtyCtrl = TextEditingController(
       text: existing != null ? '${existing.quantity}' : '',
     );
@@ -65,10 +83,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final minCtrl = TextEditingController(
       text: existing != null ? '${existing.minStockAlert}' : '',
     );
-    var category = existing?.category ?? PartCategories.all.first;
-    if (existing != null && !PartCategories.all.contains(existing.category)) {
-      category = 'Diğer';
-    }
     final formKey = GlobalKey<FormState>();
 
     final ok = await showDialog<bool>(
@@ -94,29 +108,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             (v == null || v.trim().isEmpty) ? 'Zorunlu' : null,
                   ),
                   const SizedBox(height: 12),
-                  StatefulBuilder(
-                    builder: (context, setLocal) {
-                      return DropdownButtonFormField<String>(
-                        value: category,
-                        decoration: const InputDecoration(
-                          labelText: 'Kategori',
-                          border: OutlineInputBorder(),
-                        ),
-                        items:
-                            PartCategories.all
-                                .map(
-                                  (c) => DropdownMenuItem(
-                                    value: c,
-                                    child: Text(c),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (v) {
-                          if (v != null) setLocal(() => category = v);
-                        },
-                      );
+                  TextFormField(
+                    controller: categoryCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Kategori',
+                      border: OutlineInputBorder(),
+                      helperText: 'Elle kategori girebilir veya aşağıdan seçebilirsiniz.',
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Zorunlu';
+                      return null;
                     },
                   ),
+                  if (availableCategories.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final c in availableCategories)
+                            ActionChip(
+                              label: Text(c),
+                              onPressed: () => categoryCtrl.text = c,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: qtyCtrl,
@@ -197,13 +217,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
     if (ok != true || !mounted) {
       nameCtrl.dispose();
+      categoryCtrl.dispose();
       qtyCtrl.dispose();
       priceCtrl.dispose();
       minCtrl.dispose();
       return;
     }
 
-    final inv = context.read<InventoryProvider>();
     final qty = int.parse(qtyCtrl.text.trim());
     final price = double.parse(priceCtrl.text.trim().replaceAll(',', '.'));
     final minS = int.parse(minCtrl.text.trim());
@@ -212,7 +232,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (existing == null) {
         await inv.createItem(
           name: nameCtrl.text,
-          category: category.trim(),
+          category: inv.normalizeCategoryName(categoryCtrl.text),
           quantity: qty,
           unitPrice: price,
           minStockAlert: minS,
@@ -221,7 +241,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         await inv.updateItem(
           existing.copyWith(
             name: nameCtrl.text.trim(),
-            category: category,
+            category: inv.normalizeCategoryName(categoryCtrl.text),
             quantity: qty,
             unitPrice: price,
             minStockAlert: minS,
@@ -242,10 +262,182 @@ class _InventoryScreenState extends State<InventoryScreen> {
       }
     } finally {
       nameCtrl.dispose();
+      categoryCtrl.dispose();
       qtyCtrl.dispose();
       priceCtrl.dispose();
       minCtrl.dispose();
     }
+  }
+
+  Future<void> _showCategoryManager() async {
+    final inv = context.read<InventoryProvider>();
+    final newCategoryCtrl = TextEditingController();
+    var busy = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogContext, setLocal) {
+            Future<void> addCategory() async {
+              final raw = newCategoryCtrl.text;
+              final normalized = inv.normalizeCategoryName(raw);
+              if (normalized.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Kategori adı zorunludur.')),
+                );
+                return;
+              }
+
+              setLocal(() => busy = true);
+              try {
+                await inv.ensureCategoryExists(normalized);
+                newCategoryCtrl.clear();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Kategori eklendi: $normalized')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+              } finally {
+                if (mounted) setLocal(() => busy = false);
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Kategori yönetimi'),
+              content: SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: newCategoryCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Yeni kategori adı',
+                              border: OutlineInputBorder(),
+                            ),
+                            onSubmitted: (_) {
+                              if (!busy) addCategory();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: busy ? null : addCategory,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Ekle'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Kategori silme yalnızca o kategori hiçbir parçada kullanılmıyorsa yapılır.',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 260),
+                      child: Consumer<InventoryProvider>(
+                        builder: (context, provider, _) {
+                          final categories = provider.categories;
+                          if (categories.isEmpty) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text('Henüz kategori yok.'),
+                              ),
+                            );
+                          }
+
+                          return ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: categories.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final c = categories[index];
+                              final isDefault = PartCategories.defaults.contains(
+                                c,
+                              );
+                              return ListTile(
+                                dense: true,
+                                title: Text(c),
+                                trailing: IconButton(
+                                  tooltip:
+                                      isDefault
+                                          ? 'Varsayılan kategori silinemez'
+                                          : 'Kategoriyi sil',
+                                  icon: Icon(
+                                    isDefault
+                                        ? Icons.lock_outline
+                                        : Icons.delete_outline,
+                                    color:
+                                        isDefault
+                                            ? Colors.grey.shade500
+                                            : Colors.red.shade700,
+                                  ),
+                                  onPressed:
+                                      busy || isDefault
+                                          ? null
+                                          : () async {
+                                            final messenger =
+                                                ScaffoldMessenger.of(
+                                                  this.context,
+                                                );
+                                            setLocal(() => busy = true);
+                                            try {
+                                              await provider.deleteCategory(c);
+                                              if (!mounted) return;
+                                              messenger.showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Kategori silindi: $c',
+                                                  ),
+                                                ),
+                                              );
+                                            } catch (e) {
+                                              if (!mounted) return;
+                                              messenger.showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Silinemedi: $e'),
+                                                ),
+                                              );
+                                            } finally {
+                                              if (mounted) {
+                                                setLocal(() => busy = false);
+                                              }
+                                            }
+                                          },
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy ? null : () => Navigator.pop(ctx),
+                  child: const Text('Kapat'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    newCategoryCtrl.dispose();
   }
 
   Future<void> _confirmDelete(InventoryItem item) async {
@@ -315,7 +507,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 StatefulBuilder(
                   builder: (context, setLocal) {
                     return DropdownButtonFormField<InventoryItem>(
-                      value: selected,
+                      initialValue: selected,
                       decoration: const InputDecoration(
                         labelText: 'Parça',
                         border: OutlineInputBorder(),
@@ -719,6 +911,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget build(BuildContext context) {
     final inv = context.watch<InventoryProvider>();
     final rows = _filtered(inv.allItems);
+    final categoryFilterValue =
+      _categoryFilter != null && inv.categories.contains(_categoryFilter)
+        ? _categoryFilter
+        : null;
 
     return Scaffold(
       body: Row(
@@ -759,7 +955,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             SizedBox(
                               width: 200,
                               child: DropdownButtonFormField<String?>(
-                                value: _categoryFilter,
+                                initialValue: categoryFilterValue,
                                 decoration: InputDecoration(
                                   labelText: 'Kategori',
                                   filled: true,
@@ -777,7 +973,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                     value: null,
                                     child: Text('Tümü'),
                                   ),
-                                  ...PartCategories.all.map(
+                                  ...inv.categories.map(
                                     (c) => DropdownMenuItem(
                                       value: c,
                                       child: Text(c),
@@ -787,6 +983,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 onChanged:
                                     (v) => setState(() => _categoryFilter = v),
                               ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _showCategoryManager,
+                              icon: const Icon(Icons.category_outlined, size: 20),
+                              label: const Text('Kategori Yönet'),
                             ),
                             FilledButton.icon(
                               onPressed: () => _showPartForm(),

@@ -32,9 +32,13 @@ class InventoryProvider extends ChangeNotifier {
   StreamSubscription<User?>? _authSub;
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _inventorySub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _categorySub;
 
   bool _searching = false;
   bool get isSearching => _searching;
+
+  List<String> _categories = [...PartCategories.defaults];
+  List<String> get categories => List.unmodifiable(_categories);
 
   List<InventoryItem> _lastResults = [];
   List<InventoryItem> get lastSearchResults => List.unmodifiable(_lastResults);
@@ -60,7 +64,10 @@ class InventoryProvider extends ChangeNotifier {
   void _stopInventoryStream() {
     _inventorySub?.cancel();
     _inventorySub = null;
+    _categorySub?.cancel();
+    _categorySub = null;
     _allItems = [];
+    _categories = [...PartCategories.defaults];
     _inventoryLoading = false;
     _inventoryError = null;
     notifyListeners();
@@ -96,13 +103,89 @@ class InventoryProvider extends ChangeNotifier {
         notifyListeners();
       },
     );
+
+    _listenCategories();
+  }
+
+  void _listenCategories() {
+    _categorySub?.cancel();
+    _categorySub = _firestore
+        .collection(FirestoreCollections.inventoryCategories)
+        .orderBy('name')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        final fromDb = snapshot.docs
+            .map((d) => (d.data()['name'] as String? ?? '').trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final fromItems = _allItems
+            .map((e) => e.category.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final merged = <String>{
+          ...PartCategories.defaults,
+          ...fromDb,
+          ...fromItems,
+        }.toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+        _categories = merged;
+        notifyListeners();
+      },
+      onError: (Object e) {
+        debugPrint('CATEGORY STREAM HATASI: $e');
+      },
+    );
   }
 
   @override
   void dispose() {
     _authSub?.cancel();
     _inventorySub?.cancel();
+    _categorySub?.cancel();
     super.dispose();
+  }
+
+  String normalizeCategoryName(String input) {
+    return input
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  Future<void> ensureCategoryExists(String categoryName) async {
+    final normalized = normalizeCategoryName(categoryName);
+    if (normalized.isEmpty) {
+      throw ArgumentError('Kategori adı boş olamaz.');
+    }
+
+    final ref = _firestore
+        .collection(FirestoreCollections.inventoryCategories)
+        .doc(normalized.toLowerCase());
+    await ref.set({
+      'id': ref.id,
+      'name': normalized,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> deleteCategory(String categoryName) async {
+    final normalized = normalizeCategoryName(categoryName);
+    if (normalized.isEmpty) {
+      throw ArgumentError('Geçersiz kategori.');
+    }
+
+    final inUse = _allItems.any((e) => e.category == normalized);
+    if (inUse) {
+      throw StateError('Bu kategori kullanımda olduğu için silinemez.');
+    }
+
+    await _firestore
+        .collection(FirestoreCollections.inventoryCategories)
+        .doc(normalized.toLowerCase())
+        .delete();
   }
 
   /// İsim alanında önek araması (servis ekranı — `name` ASC).
@@ -174,11 +257,17 @@ class InventoryProvider extends ChangeNotifier {
     required double unitPrice,
     required int minStockAlert,
   }) async {
+    final normalizedCategory = normalizeCategoryName(category);
+    if (normalizedCategory.isEmpty) {
+      throw ArgumentError('Kategori zorunlu.');
+    }
+    await ensureCategoryExists(normalizedCategory);
+
     final ref = _firestore.collection(FirestoreCollections.inventory).doc();
     await ref.set({
       'id': ref.id,
       'name': name.trim(),
-      'category': category,
+      'category': normalizedCategory,
       'quantity': quantity,
       'unitPrice': unitPrice,
       'minStockAlert': minStockAlert,
@@ -187,12 +276,18 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   Future<void> updateItem(InventoryItem item) async {
+    final normalizedCategory = normalizeCategoryName(item.category);
+    if (normalizedCategory.isEmpty) {
+      throw ArgumentError('Kategori zorunlu.');
+    }
+    await ensureCategoryExists(normalizedCategory);
+
     await _firestore
         .collection(FirestoreCollections.inventory)
         .doc(item.id)
         .update({
       'name': item.name.trim(),
-      'category': item.category,
+      'category': normalizedCategory,
       'quantity': item.quantity,
       'unitPrice': item.unitPrice,
       'minStockAlert': item.minStockAlert,

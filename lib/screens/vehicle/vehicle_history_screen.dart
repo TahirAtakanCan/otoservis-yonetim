@@ -108,6 +108,110 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
     }
   }
 
+  void _openPdfPreview(ServiceRecord record) {
+    if (record.id.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Servis kaydı kimliği bulunamadı.')),
+      );
+      return;
+    }
+    context.push('/pdf/preview/${Uri.encodeComponent(record.id)}');
+  }
+
+  Future<void> _confirmDeleteRecord(ServiceRecord record) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder:
+          (dCtx) => AlertDialog(
+            title: const Text('Servis kaydını sil'),
+            content: const Text(
+              'Bu servis kaydı kalıcı olarak silinecek. Emin misiniz?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dCtx).pop(false),
+                child: const Text('İptal'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade800,
+                ),
+                onPressed: () => Navigator.of(dCtx).pop(true),
+                child: const Text('Sil'),
+              ),
+            ],
+          ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      final vp = context.read<VehicleProvider>();
+      await vp.deleteServiceRecordById(record.id);
+      if (!mounted) return;
+      setState(() {
+        _records.removeWhere((r) => r.id == record.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Servis kaydı silindi.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Silinemedi: $e')));
+    }
+  }
+
+  Future<void> _confirmDeleteVehicleHistory() async {
+    if (_vehicle == null || _records.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Silinecek servis geçmişi bulunmuyor.')),
+      );
+      return;
+    }
+
+    final count = _records.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder:
+          (dCtx) => AlertDialog(
+            title: const Text('Araç geçmişini sil'),
+            content: Text(
+              'Bu araca ait tüm servis geçmişi ($count kayıt) kalıcı olarak silinecek. Emin misiniz?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dCtx).pop(false),
+                child: const Text('İptal'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade800,
+                ),
+                onPressed: () => Navigator.of(dCtx).pop(true),
+                child: const Text('Hepsini Sil'),
+              ),
+            ],
+          ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      final vp = context.read<VehicleProvider>();
+      final deleted = await vp.deleteServiceHistoryForPlate(_vehicle!.plate);
+      if (!mounted) return;
+      setState(() => _records = []);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$deleted servis kaydı silindi.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Geçmiş silinemedi: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final vp = context.watch<VehicleProvider>();
@@ -215,10 +319,31 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            Text(
-                              'Servis kayıtları',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Servis kayıtları',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                                if (_records.isNotEmpty)
+                                  OutlinedButton.icon(
+                                    onPressed: _confirmDeleteVehicleHistory,
+                                    icon: const Icon(
+                                      Icons.delete_sweep_outlined,
+                                    ),
+                                    label: const Text('Araç Geçmişini Sil'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red.shade700,
+                                    ),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             if (_records.isEmpty)
@@ -241,6 +366,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                 (r) => Card(
                                   margin: const EdgeInsets.only(bottom: 10),
                                   child: ListTile(
+                                    onTap: () => _openPdfPreview(r),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 8,
@@ -259,29 +385,59 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    trailing: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          AppFormatters.formatLira(
-                                            r.grandTotal,
-                                          ),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
+                                        Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              AppFormatters.formatLira(
+                                                r.grandTotal,
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              _statusLabel(r.status),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: _statusColor(r.status),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _statusLabel(r.status),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: _statusColor(r.status),
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        PopupMenuButton<String>(
+                                          tooltip: 'İşlemler',
+                                          onSelected: (value) {
+                                            if (value == 'pdf') {
+                                              _openPdfPreview(r);
+                                              return;
+                                            }
+                                            if (value == 'delete') {
+                                              _confirmDeleteRecord(r);
+                                            }
+                                          },
+                                          itemBuilder:
+                                              (ctx) => const [
+                                                PopupMenuItem<String>(
+                                                  value: 'pdf',
+                                                  child: Text('PDF Aç'),
+                                                ),
+                                                PopupMenuItem<String>(
+                                                  value: 'delete',
+                                                  child: Text(
+                                                    'Servis Kaydını Sil',
+                                                  ),
+                                                ),
+                                              ],
                                         ),
                                       ],
                                     ),

@@ -106,6 +106,14 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
     }
   }
 
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,7 +169,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: _working ? null : () => context.go('/'),
+                      onPressed: _working ? null : _goBack,
                       icon: const Icon(Icons.arrow_back),
                       label: const Text('Geri dön'),
                     ),
