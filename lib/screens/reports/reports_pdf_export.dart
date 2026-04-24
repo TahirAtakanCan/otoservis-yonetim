@@ -356,12 +356,30 @@ abstract final class ReportsPdfExport {
     return doc.save();
   }
 
+  /// Stok hareket PDF’inde filtre açıklaması (aralık satırının altı).
+  static String stockMovementFilterCaption({
+    required bool includeStok,
+    required bool includeHarici,
+  }) {
+    if (includeStok && includeHarici) {
+      return 'Hareket kapsamı: Stok parçaları + Harici (manuel) parçalar';
+    }
+    if (includeStok) {
+      return 'Hareket kapsamı: Yalnızca stoktan düşen parçalar';
+    }
+    if (includeHarici) {
+      return 'Hareket kapsamı: Yalnızca harici (manuel) parçalar';
+    }
+    return 'Hareket kapsamı: —';
+  }
+
   static Future<Uint8List> buildStockPdf({
     required DateTime start,
     required DateTime end,
     required List<(String name, String category, int qty, double total)>
     partRows,
     required List<InventoryItem> criticalItems,
+    String? movementFilterCaption,
   }) async {
     final bundle = await PdfBranding.loadBundle();
     final doc = pw.Document(theme: bundle.theme);
@@ -382,7 +400,19 @@ abstract final class ReportsPdfExport {
             _reportHeader(bundle, 'Stok Hareket Raporu', end),
             pw.SizedBox(height: 10),
             _rangeSubtitle(bundle, start, end),
-            pw.SizedBox(height: 12),
+            if (movementFilterCaption != null &&
+                movementFilterCaption.isNotEmpty) ...[
+              pw.SizedBox(height: 4),
+              pw.Text(
+                movementFilterCaption,
+                style: pw.TextStyle(
+                  font: bundle.regular,
+                  fontSize: 9,
+                  color: PdfColors.grey700,
+                ),
+              ),
+            ],
+            pw.SizedBox(height: 10),
             pw.Table(
               border: pw.TableBorder.all(color: PdfBranding.border, width: 0.5),
               columnWidths: {
@@ -398,17 +428,29 @@ abstract final class ReportsPdfExport {
                   'Adet',
                   'Toplam Tutar',
                 ], bundle),
-                for (var i = 0; i < partRows.length; i++)
+                if (partRows.isEmpty)
                   _dataRow(
-                    [
-                      partRows[i].$1,
-                      partRows[i].$2,
-                      '${partRows[i].$3}',
-                      moneyFmt.format(partRows[i].$4),
+                    const [
+                      'Seçilen filtreye uygun parça hareketi yok.',
+                      '—',
+                      '—',
+                      '—',
                     ],
                     bundle,
-                    i,
-                  ),
+                    0,
+                  )
+                else
+                  for (var i = 0; i < partRows.length; i++)
+                    _dataRow(
+                      [
+                        partRows[i].$1,
+                        partRows[i].$2,
+                        '${partRows[i].$3}',
+                        moneyFmt.format(partRows[i].$4),
+                      ],
+                      bundle,
+                      i,
+                    ),
               ],
             ),
             pw.SizedBox(height: 14),
@@ -881,7 +923,12 @@ abstract final class ReportsPdfExport {
   }
 
   static List<(String name, String category, int qty, double total)>
-  aggregateParts(List<ServiceRecord> records, List<InventoryItem> inventory) {
+  aggregateParts(
+    List<ServiceRecord> records,
+    List<InventoryItem> inventory, {
+    bool includeStok = true,
+    bool includeHarici = true,
+  }) {
     final byId = {for (final i in inventory) i.id: i};
     final byName = <String, InventoryItem>{};
     for (final i in inventory) {
@@ -891,6 +938,11 @@ abstract final class ReportsPdfExport {
     final agg = <String, ({int q, double t, String cat})>{};
     for (final r in records) {
       for (final pt in r.parts) {
+        if (pt.isManual) {
+          if (!includeHarici) continue;
+        } else {
+          if (!includeStok) continue;
+        }
         final inv = pt.isManual
             ? null
             : (byId[pt.partId] ?? byName[pt.partName]);

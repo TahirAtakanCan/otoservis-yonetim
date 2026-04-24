@@ -429,7 +429,12 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         _StockTab(
                                           recordsFuture: _ensureRecords(),
                                           onRetry: _invalidateAndReload,
-                                          onPdf: () async => _stockPdf(range),
+                                          onPdf: (includeStok, includeHarici) async =>
+                                              _stockPdf(
+                                            range,
+                                            includeStok: includeStok,
+                                            includeHarici: includeHarici,
+                                          ),
                                         ),
                                         _TechnicianTab(
                                           recordsFuture: _ensureRecords(),
@@ -507,11 +512,31 @@ class _ReportsScreenState extends State<ReportsScreen>
     }
   }
 
-  Future<void> _stockPdf((DateTime, DateTime) range) async {
+  Future<void> _stockPdf(
+    (DateTime, DateTime) range, {
+    bool includeStok = true,
+    bool includeHarici = true,
+  }) async {
+    if (!includeStok && !includeHarici) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Stok hareket raporu için en az biri seçilmelidir: stok parçaları veya harici parçalar.',
+          ),
+        ),
+      );
+      return;
+    }
     try {
       final records = await _queryServiceRecords(range.$1, range.$2);
       final inventory = await _loadAllInventory();
-      final partRows = ReportsPdfExport.aggregateParts(records, inventory);
+      final partRows = ReportsPdfExport.aggregateParts(
+        records,
+        inventory,
+        includeStok: includeStok,
+        includeHarici: includeHarici,
+      );
       final critical =
           inventory.where((e) => e.quantity <= e.minStockAlert).toList()
             ..sort((a, b) => a.name.compareTo(b.name));
@@ -520,6 +545,10 @@ class _ReportsScreenState extends State<ReportsScreen>
         end: range.$2,
         partRows: partRows,
         criticalItems: critical,
+        movementFilterCaption: ReportsPdfExport.stockMovementFilterCaption(
+          includeStok: includeStok,
+          includeHarici: includeHarici,
+        ),
       );
       await _persistPdfBytes(bytes, 'stok_hareket_raporu.pdf');
       await _sharePdfWithFallback(bytes, 'stok_hareket_raporu.pdf');
@@ -1126,7 +1155,7 @@ class _VehicleTab extends StatelessWidget {
 
 // —— Sekme: Stok —— //
 
-class _StockTab extends StatelessWidget {
+class _StockTab extends StatefulWidget {
   const _StockTab({
     required this.recordsFuture,
     required this.onRetry,
@@ -1135,18 +1164,26 @@ class _StockTab extends StatelessWidget {
 
   final Future<List<ServiceRecord>> recordsFuture;
   final VoidCallback onRetry;
-  final Future<void> Function() onPdf;
+  final Future<void> Function(bool includeStok, bool includeHarici) onPdf;
+
+  @override
+  State<_StockTab> createState() => _StockTabState();
+}
+
+class _StockTabState extends State<_StockTab> {
+  bool _includeStok = true;
+  bool _includeHarici = true;
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<ServiceRecord>>(
-      future: recordsFuture,
+      future: widget.recordsFuture,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snap.hasError) {
-          return _TabError(message: '${snap.error}', onRetry: onRetry);
+          return _TabError(message: '${snap.error}', onRetry: widget.onRetry);
         }
         final records = snap.data ?? [];
         if (records.isEmpty) {
@@ -1162,12 +1199,16 @@ class _StockTab extends StatelessWidget {
             if (invSnap.hasError) {
               return _TabError(
                 message: '${invSnap.error}',
-                onRetry: onRetry,
+                onRetry: widget.onRetry,
               );
             }
             final inventory = invSnap.data ?? [];
-            final partRows =
-                ReportsPdfExport.aggregateParts(records, inventory);
+            final partRows = ReportsPdfExport.aggregateParts(
+              records,
+              inventory,
+              includeStok: _includeStok,
+              includeHarici: _includeHarici,
+            );
             final byName = {for (final i in inventory) i.name: i};
             final byId = {for (final i in inventory) i.id: i};
 
@@ -1175,10 +1216,41 @@ class _StockTab extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  Text(
+                    'Harekete dahil edilecek parça türleri',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppColors.primaryNavy,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilterChip(
+                        label: const Text('Stoktan (envanter)'),
+                        selected: _includeStok,
+                        onSelected: (v) {
+                          setState(() => _includeStok = v);
+                        },
+                      ),
+                      FilterChip(
+                        label: const Text('Harici (manuel)'),
+                        selected: _includeHarici,
+                        onSelected: (v) {
+                          setState(() => _includeHarici = v);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
                     child: OutlinedButton.icon(
-                      onPressed: () => onPdf(),
+                      onPressed: () => widget.onPdf(
+                        _includeStok,
+                        _includeHarici,
+                      ),
                       icon: const Icon(Icons.picture_as_pdf_outlined),
                       label: const Text('Stok hareket raporu PDF\'i al'),
                     ),
@@ -1196,24 +1268,46 @@ class _StockTab extends StatelessWidget {
                         DataColumn(label: Text('Kullanım Adedi')),
                         DataColumn(label: Text('Toplam Tutar')),
                       ],
-                      rows: [
-                        for (var i = 0; i < partRows.length; i++)
-                          DataRow(
-                            color: WidgetStateProperty.resolveWith((_) {
-                              return i.isEven
-                                  ? Colors.white
-                                  : Colors.grey.shade100;
-                            }),
-                            cells: [
-                              DataCell(Text(partRows[i].$1)),
-                              DataCell(Text(partRows[i].$2)),
-                              DataCell(Text('${partRows[i].$3}')),
-                              DataCell(Text(
-                                AppFormatters.formatLira(partRows[i].$4),
-                              )),
+                      rows: partRows.isEmpty
+                          ? [
+                              DataRow(
+                                cells: [
+                                  DataCell(
+                                    Text(
+                                      'Seçilen kapsamda hareket yok veya tüm türler kapalı.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Colors.grey.shade600,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                    ),
+                                  ),
+                                  const DataCell(SizedBox.shrink()),
+                                  const DataCell(SizedBox.shrink()),
+                                  const DataCell(SizedBox.shrink()),
+                                ],
+                              ),
+                            ]
+                          : [
+                              for (var i = 0; i < partRows.length; i++)
+                                DataRow(
+                                  color: WidgetStateProperty.resolveWith((_) {
+                                    return i.isEven
+                                        ? Colors.white
+                                        : Colors.grey.shade100;
+                                  }),
+                                  cells: [
+                                    DataCell(Text(partRows[i].$1)),
+                                    DataCell(Text(partRows[i].$2)),
+                                    DataCell(Text('${partRows[i].$3}')),
+                                    DataCell(Text(
+                                      AppFormatters.formatLira(partRows[i].$4),
+                                    )),
+                                  ],
+                                ),
                             ],
-                          ),
-                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
