@@ -108,6 +108,25 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
     }
   }
 
+  String? _kmInfoLine(int index) {
+    final current = _records[index].vehicleKm;
+    if (current <= 0) return null;
+
+    final base = 'KM: ${AppFormatters.formatKm(current)} km';
+    if (index + 1 >= _records.length) {
+      return base;
+    }
+
+    final previous = _records[index + 1].vehicleKm;
+    if (previous <= 0) {
+      return base;
+    }
+
+    final diff = current - previous;
+    final sign = diff >= 0 ? '+' : '-';
+    return '$base · Son 2 işlem farkı: $sign${AppFormatters.formatKm(diff.abs())} km';
+  }
+
   void _openPdfPreview(ServiceRecord record) {
     if (record.id.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -314,6 +333,12 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                       'Araç',
                                       '${v.brand} ${v.model} (${v.year})',
                                     ),
+                                    _infoRow(
+                                      'Güncel KM',
+                                      v.currentKm > 0
+                                          ? '${AppFormatters.formatKm(v.currentKm)} km'
+                                          : '—',
+                                    ),
                                   ],
                                 ),
                               ),
@@ -362,8 +387,16 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                 ),
                               )
                             else
-                              ..._records.map(
-                                (r) => Card(
+                              ..._records.asMap().entries.map(
+                                (entry) {
+                                  final i = entry.key;
+                                  final r = entry.value;
+                                  final kmLine = _kmInfoLine(i);
+                                  final summary = _summary(r);
+                                  final subtitle =
+                                      kmLine == null ? summary : '$summary\n$kmLine';
+
+                                  return Card(
                                   margin: const EdgeInsets.only(bottom: 10),
                                   child: ListTile(
                                     onTap: () => _openPdfPreview(r),
@@ -380,8 +413,8 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                     subtitle: Padding(
                                       padding: const EdgeInsets.only(top: 6),
                                       child: Text(
-                                        _summary(r),
-                                        maxLines: 3,
+                                        subtitle,
+                                        maxLines: 4,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -442,7 +475,8 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                       ],
                                     ),
                                   ),
-                                ),
+                                );
+                                },
                               ),
                           ],
                         ),

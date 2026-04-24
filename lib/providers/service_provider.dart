@@ -70,6 +70,16 @@ class ServiceProvider extends ChangeNotifier {
             'updatedAt': FieldValue.serverTimestamp(),
           });
         }
+
+        if (full.vehicleKm > 0) {
+          final vehicleRef = _firestore
+              .collection(FirestoreCollections.vehicles)
+              .doc(full.vehiclePlate);
+          transaction.set(vehicleRef, {
+            'currentKm': full.vehicleKm,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
       });
 
       return serviceId;

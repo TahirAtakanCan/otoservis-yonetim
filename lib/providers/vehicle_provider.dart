@@ -98,6 +98,7 @@ class VehicleProvider extends ChangeNotifier {
     required String brand,
     required String model,
     required int year,
+    required int currentKm,
   }) async {
     final key = normalizePlate(plate);
     if (key.isEmpty) throw ArgumentError('Geçersiz plaka');
@@ -108,6 +109,7 @@ class VehicleProvider extends ChangeNotifier {
       'brand': brand.trim(),
       'model': model.trim(),
       'year': year,
+      'currentKm': currentKm,
     });
 
     if (_selectedVehicle?.plate == key) {
@@ -117,6 +119,7 @@ class VehicleProvider extends ChangeNotifier {
         brand: brand.trim(),
         model: model.trim(),
         year: year,
+        currentKm: currentKm,
       );
     }
     notifyListeners();

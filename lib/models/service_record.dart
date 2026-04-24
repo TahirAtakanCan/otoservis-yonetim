@@ -90,6 +90,7 @@ class ServiceRecord {
   const ServiceRecord({
     required this.id,
     required this.vehiclePlate,
+    required this.vehicleKm,
     required this.technicianId,
     required this.technicianName,
     required this.date,
@@ -106,6 +107,7 @@ class ServiceRecord {
 
   final String id;
   final String vehiclePlate;
+  final int vehicleKm;
   final String technicianId;
   final String technicianName;
   final DateTime date;
@@ -122,6 +124,7 @@ class ServiceRecord {
   ServiceRecord copyWith({
     String? id,
     String? vehiclePlate,
+    int? vehicleKm,
     String? technicianId,
     String? technicianName,
     DateTime? date,
@@ -138,6 +141,7 @@ class ServiceRecord {
     return ServiceRecord(
       id: id ?? this.id,
       vehiclePlate: vehiclePlate ?? this.vehiclePlate,
+      vehicleKm: vehicleKm ?? this.vehicleKm,
       technicianId: technicianId ?? this.technicianId,
       technicianName: technicianName ?? this.technicianName,
       date: date ?? this.date,
@@ -160,6 +164,7 @@ class ServiceRecord {
     return ServiceRecord(
       id: (map['id'] ?? '') as String,
       vehiclePlate: (map['vehiclePlate'] ?? '') as String,
+      vehicleKm: (map['vehicleKm'] as num?)?.toInt() ?? 0,
       technicianId: (map['technicianId'] ?? '') as String,
       technicianName: (map['technicianName'] ?? '') as String,
       date: _toDateTime(map['date']),
@@ -191,6 +196,7 @@ class ServiceRecord {
     return {
       'id': id,
       'vehiclePlate': vehiclePlate,
+      'vehicleKm': vehicleKm,
       'technicianId': technicianId,
       'technicianName': technicianName,
       'date': Timestamp.fromDate(date),

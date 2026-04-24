@@ -480,6 +480,13 @@ class _VehicleCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
             ),
             const SizedBox(height: 4),
+            Text(
+              v.currentKm > 0
+                  ? 'KM: ${AppFormatters.formatKm(v.currentKm)}'
+                  : 'KM: —',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+            ),
+            const SizedBox(height: 4),
             Row(
               children: [
                 Icon(Icons.phone_outlined, size: 16, color: Colors.grey.shade600),

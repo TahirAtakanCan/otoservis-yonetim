@@ -30,6 +30,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   late final TabController _tabController;
   final _searchController = TextEditingController();
   final _plateController = TextEditingController();
+  final _vehicleKmController = TextEditingController();
   final _technicianController = TextEditingController();
   final _notesController = TextEditingController();
   Timer? _searchDebounce;
@@ -102,6 +103,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       _plateController.selection = TextSelection.collapsed(
         offset: _plateController.text.length,
       );
+      _vehicleKmController.text = vehicle.currentKm > 0
+          ? '${vehicle.currentKm}'
+          : '';
 
       setState(() {
         _resolvingVehicle = false;
@@ -122,6 +126,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     _tabController.dispose();
     _searchController.dispose();
     _plateController.dispose();
+    _vehicleKmController.dispose();
     _technicianController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -386,6 +391,14 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       return;
     }
 
+    final serviceKm = int.tryParse(_vehicleKmController.text.trim());
+    if (serviceKm == null || serviceKm < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Servis için geçerli KM girin.')),
+      );
+      return;
+    }
+
     if (!context.read<ConnectivityNotifier>().isOnline) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -418,6 +431,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     final record = ServiceRecord(
       id: '',
       vehiclePlate: plate,
+      vehicleKm: serviceKm,
       technicianId: user.uid,
       technicianName: techName,
       date: DateTime.now(),
@@ -1025,6 +1039,22 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
               ),
             ),
             const SizedBox(height: 12),
+            Text('Araç KM', style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _vehicleKmController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(8),
+              ],
+              decoration: const InputDecoration(
+                hintText: 'Örn: 128500',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 10),
             Text('Teknisyen', style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(height: 4),
             TextField(

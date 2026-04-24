@@ -72,13 +72,42 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
       throw StateError('Araç kaydı bulunamadı.');
     }
 
-    return _PdfData(service: service, vehicle: vehicle);
+    final historySnap = await firestore
+        .collection(FirestoreCollections.serviceRecords)
+        .where('vehiclePlate', isEqualTo: plate)
+        .get();
+
+    final previousRecords = historySnap.docs
+        .map(
+          (d) => ServiceRecord.fromMap({
+            ...d.data(),
+            'id': d.id,
+          }),
+        )
+        .where((r) => r.id != service.id && r.date.isBefore(service.date))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final previousKm =
+        previousRecords.isNotEmpty && previousRecords.first.vehicleKm > 0
+            ? previousRecords.first.vehicleKm
+            : null;
+    final currentKm = service.vehicleKm > 0 ? service.vehicleKm : vehicle.currentKm;
+
+    return _PdfData(
+      service: service,
+      vehicle: vehicle,
+      previousKm: previousKm,
+      currentKm: currentKm,
+    );
   }
 
   Future<Uint8List> _buildPdf(_PdfData data) async {
     _cachedPdf ??= await PdfTemplate.buildServiceSlip(
       service: data.service,
       vehicle: data.vehicle,
+      previousKm: data.previousKm,
+      currentKm: data.currentKm,
     );
     return _cachedPdf!;
   }
@@ -219,8 +248,12 @@ class _PdfData {
   const _PdfData({
     required this.service,
     required this.vehicle,
+    required this.previousKm,
+    required this.currentKm,
   });
 
   final ServiceRecord service;
   final Vehicle vehicle;
+  final int? previousKm;
+  final int currentKm;
 }

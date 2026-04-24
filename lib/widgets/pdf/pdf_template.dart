@@ -12,6 +12,8 @@ class PdfTemplate {
   static Future<Uint8List> buildServiceSlip({
     required ServiceRecord service,
     required Vehicle vehicle,
+    int? previousKm,
+    int? currentKm,
   }) async {
     final branding = await PdfBranding.loadBundle();
     final doc = pw.Document(theme: branding.theme);
@@ -35,7 +37,12 @@ class PdfTemplate {
             pw.SizedBox(height: 10),
             _buildMetaCard(service: service, branding: branding),
             pw.SizedBox(height: 12),
-            _buildVehicleInfoCard(vehicle: vehicle, branding: branding),
+            _buildVehicleInfoCard(
+              vehicle: vehicle,
+              previousKm: previousKm,
+              currentKm: currentKm,
+              branding: branding,
+            ),
             pw.SizedBox(height: 14),
             _buildPartsSection(
               parts: service.parts,
@@ -117,8 +124,15 @@ class PdfTemplate {
 
   static pw.Widget _buildVehicleInfoCard({
     required Vehicle vehicle,
+    required int? previousKm,
+    required int? currentKm,
     required PdfBrandingBundle branding,
   }) {
+    String kmText(int? km) {
+      if (km == null || km <= 0) return '—';
+      return '${AppFormatters.formatKm(km)} km';
+    }
+
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
@@ -151,6 +165,8 @@ class PdfTemplate {
                       '${vehicle.brand} ${vehicle.model} ${vehicle.year}',
                       branding,
                     ),
+                    _infoLine('Önceki KM', kmText(previousKm), branding),
+                    _infoLine('Şu an KM', kmText(currentKm), branding),
                   ],
                 ),
               ),

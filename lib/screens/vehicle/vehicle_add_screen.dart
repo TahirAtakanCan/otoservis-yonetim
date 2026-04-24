@@ -26,6 +26,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
   final _brandCtrl = TextEditingController();
   final _modelCtrl = TextEditingController();
   final _yearCtrl = TextEditingController();
+  final _kmCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
 
   bool _saving = false;
@@ -44,6 +45,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
     _brandCtrl.dispose();
     _modelCtrl.dispose();
     _yearCtrl.dispose();
+    _kmCtrl.dispose();
     _plateCtrl.dispose();
     super.dispose();
   }
@@ -79,6 +81,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
         brand: _brandCtrl.text.trim(),
         model: _modelCtrl.text.trim(),
         year: int.parse(_yearCtrl.text.trim()),
+        currentKm: int.parse(_kmCtrl.text.trim()),
         createdAt: DateTime.now(),
       );
 
@@ -349,6 +352,32 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                                                   y < 1950 ||
                                                   y > 2100) {
                                                 return 'Geçerli yıl girin';
+                                              }
+                                              return null;
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: fieldWidth,
+                                          child: _buildTextField(
+                                            controller: _kmCtrl,
+                                            label: 'KM',
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter
+                                                  .digitsOnly,
+                                              LengthLimitingTextInputFormatter(
+                                                8,
+                                              ),
+                                            ],
+                                            validator: (v) {
+                                              if (v == null ||
+                                                  v.trim().isEmpty) {
+                                                return 'Zorunlu';
+                                              }
+                                              final km = int.tryParse(v.trim());
+                                              if (km == null || km < 0) {
+                                                return 'Geçerli KM girin';
                                               }
                                               return null;
                                             },

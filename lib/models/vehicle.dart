@@ -8,6 +8,7 @@ class Vehicle {
     required this.brand,
     required this.model,
     required this.year,
+    required this.currentKm,
     required this.createdAt,
   });
 
@@ -17,6 +18,7 @@ class Vehicle {
   final String brand;
   final String model;
   final int year;
+  final int currentKm;
   final DateTime createdAt;
 
   Vehicle copyWith({
@@ -26,6 +28,7 @@ class Vehicle {
     String? brand,
     String? model,
     int? year,
+    int? currentKm,
     DateTime? createdAt,
   }) {
     return Vehicle(
@@ -35,6 +38,7 @@ class Vehicle {
       brand: brand ?? this.brand,
       model: model ?? this.model,
       year: year ?? this.year,
+      currentKm: currentKm ?? this.currentKm,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -47,6 +51,7 @@ class Vehicle {
       brand: (map['brand'] ?? '') as String,
       model: (map['model'] ?? '') as String,
       year: (map['year'] as num?)?.toInt() ?? 0,
+      currentKm: (map['currentKm'] as num?)?.toInt() ?? 0,
       createdAt: _toDateTime(map['createdAt']),
     );
   }
@@ -59,6 +64,7 @@ class Vehicle {
       'brand': brand,
       'model': model,
       'year': year,
+      'currentKm': currentKm,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }

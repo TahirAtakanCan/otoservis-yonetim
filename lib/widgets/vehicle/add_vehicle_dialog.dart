@@ -14,6 +14,7 @@ Future<Vehicle?> showAddVehicleDialog(
   final brandCtrl = TextEditingController();
   final modelCtrl = TextEditingController();
   final yearCtrl = TextEditingController();
+  final kmCtrl = TextEditingController();
   final plateCtrl = TextEditingController(text: initialPlate?.trim() ?? '');
   final formKey = GlobalKey<FormState>();
 
@@ -118,6 +119,27 @@ Future<Vehicle?> showAddVehicleDialog(
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        controller: kmCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(8),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'KM',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Zorunlu';
+                          final km = int.tryParse(v.trim());
+                          if (km == null || km < 0) {
+                            return 'Geçerli KM girin';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
                         controller: plateCtrl,
                         textCapitalization: TextCapitalization.characters,
                         inputFormatters: [
@@ -174,6 +196,7 @@ Future<Vehicle?> showAddVehicleDialog(
                                 brand: brandCtrl.text.trim(),
                                 model: modelCtrl.text.trim(),
                                 year: int.parse(yearCtrl.text.trim()),
+                                currentKm: int.parse(kmCtrl.text.trim()),
                                 createdAt: DateTime.now(),
                               );
 
@@ -211,6 +234,7 @@ Future<Vehicle?> showAddVehicleDialog(
     brandCtrl.dispose();
     modelCtrl.dispose();
     yearCtrl.dispose();
+    kmCtrl.dispose();
     plateCtrl.dispose();
   }
 }

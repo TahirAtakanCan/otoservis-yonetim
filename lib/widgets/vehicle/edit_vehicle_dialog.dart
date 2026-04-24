@@ -19,6 +19,7 @@ Future<bool?> showEditVehicleDialog(
   final brandCtrl = TextEditingController(text: vehicle.brand);
   final modelCtrl = TextEditingController(text: vehicle.model);
   final yearCtrl = TextEditingController(text: '${vehicle.year}');
+  final kmCtrl = TextEditingController(text: '${vehicle.currentKm}');
   final formKey = GlobalKey<FormState>();
 
   try {
@@ -33,6 +34,7 @@ Future<bool?> showEditVehicleDialog(
           brandCtrl: brandCtrl,
           modelCtrl: modelCtrl,
           yearCtrl: yearCtrl,
+          kmCtrl: kmCtrl,
           vehicle: vehicle,
         );
       },
@@ -43,6 +45,7 @@ Future<bool?> showEditVehicleDialog(
     brandCtrl.dispose();
     modelCtrl.dispose();
     yearCtrl.dispose();
+    kmCtrl.dispose();
   }
 }
 
@@ -54,6 +57,7 @@ class _EditVehicleDialogBody extends StatefulWidget {
     required this.brandCtrl,
     required this.modelCtrl,
     required this.yearCtrl,
+    required this.kmCtrl,
     required this.vehicle,
   });
 
@@ -63,6 +67,7 @@ class _EditVehicleDialogBody extends StatefulWidget {
   final TextEditingController brandCtrl;
   final TextEditingController modelCtrl;
   final TextEditingController yearCtrl;
+  final TextEditingController kmCtrl;
   final Vehicle vehicle;
 
   @override
@@ -129,6 +134,7 @@ class _EditVehicleDialogBodyState extends State<_EditVehicleDialogBody> {
         brand: widget.brandCtrl.text,
         model: widget.modelCtrl.text,
         year: int.parse(widget.yearCtrl.text.trim()),
+        currentKm: int.parse(widget.kmCtrl.text.trim()),
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -220,6 +226,27 @@ class _EditVehicleDialogBodyState extends State<_EditVehicleDialogBody> {
                   final y = int.tryParse(v.trim());
                   if (y == null || y < 1950 || y > 2100) {
                     return 'Geçerli yıl girin';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: widget.kmCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(8),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'KM',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Zorunlu';
+                  final km = int.tryParse(v.trim());
+                  if (km == null || km < 0) {
+                    return 'Geçerli KM girin';
                   }
                   return null;
                 },

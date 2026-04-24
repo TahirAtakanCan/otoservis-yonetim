@@ -58,6 +58,13 @@ abstract final class AppFormatters {
     return '${fmt.format(v)} ₺';
   }
 
+  /// Örnek: 128500 -> "128.500"
+  static String formatKm(num? value) {
+    final v = value ?? 0;
+    final fmt = NumberFormat('#,##0', 'tr_TR');
+    return fmt.format(v);
+  }
+
   /// Örnek: "15 Ocak 2025"
   static String formatDateLong(DateTime date) {
     return DateFormat('d MMMM yyyy', 'tr_TR').format(date);
