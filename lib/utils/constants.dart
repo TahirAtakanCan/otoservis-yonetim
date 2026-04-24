@@ -2,8 +2,17 @@ import 'package:flutter/material.dart';
 
 const String companyName = 'Mert Opel Servis';
 const String companySubtitle = 'Profesyonel Araç Bakım Merkezi';
-const String companyPhone = '0543 835 0390';
-const String companyAddress = 'Yeni Oto Sanayi 152341. Sokak Seydişehir/Konya';
+const String companyPhoneMert = '0543 835 03 90';
+const String companyPhoneSukru = '0506 480 6202';
+const String companyAddress =
+    'Alaylar 2 Mahallesi 152350 Sk. No: 7 Seydişehir/Konya';
+
+/// Geriye dönük uyumluluk — önceki [companyPhone] kullanımı.
+const String companyPhone = companyPhoneMert;
+
+/// Tüm PDF’lerde sayfa altı bilgilendirme metni.
+const String pdfServiceTagline =
+    'Benzinli ve Dizel tüm model araçlara Tamir/Bakım hizmetimiz vardır.';
 
 /// Firestore koleksiyon adları (uygulama genelinde aynı isimler kullanılmalı).
 abstract final class FirestoreCollections {
@@ -30,7 +39,9 @@ abstract final class BusinessInfo {
   static const String name = companyName;
   static const String subtitle = companySubtitle;
   static const String address = companyAddress;
-  static const String phone = companyPhone;
+  static const String phone = companyPhoneMert;
+  static const String phoneMert = companyPhoneMert;
+  static const String phoneSukru = companyPhoneSukru;
 }
 
 /// KDV oranları (ondalık: 0.10 = %10). Servis ekranı dropdown ile uyumlu.

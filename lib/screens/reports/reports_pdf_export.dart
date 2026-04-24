@@ -7,6 +7,7 @@ import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
 import 'package:otoservis_app/utils/formatters.dart';
+import 'package:otoservis_app/utils/constants.dart';
 import 'package:otoservis_app/utils/pdf_branding.dart';
 
 /// PDF yardımcıları — Roboto fontları [PdfBranding.loadBundle] ile yüklenir.
@@ -14,17 +15,32 @@ abstract final class ReportsPdfExport {
   static final PdfColor _totalBoxColor = PdfColor.fromHex('121212');
 
   static pw.Widget _footer(pw.Context context, PdfBrandingBundle bundle) {
-    return pw.Container(
-      alignment: pw.Alignment.centerRight,
-      margin: const pw.EdgeInsets.only(top: 8),
-      child: pw.Text(
-        'Sayfa ${context.pageNumber} / ${context.pagesCount}',
-        style: pw.TextStyle(
-          font: bundle.regular,
-          fontSize: 8,
-          color: PdfColors.grey700,
+    return pw.Column(
+      mainAxisSize: pw.MainAxisSize.min,
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.Text(
+          pdfServiceTagline,
+          textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(
+            font: bundle.regular,
+            fontSize: 9,
+            color: PdfColor.fromHex('424242'),
+          ),
         ),
-      ),
+        pw.SizedBox(height: 4),
+        pw.Container(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Text(
+            'Sayfa ${context.pageNumber} / ${context.pagesCount}',
+            style: pw.TextStyle(
+              font: bundle.regular,
+              fontSize: 8,
+              color: PdfColors.grey700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

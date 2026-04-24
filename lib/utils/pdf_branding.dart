@@ -10,12 +10,16 @@ class PdfBrandingBundle {
     required this.bold,
     required this.theme,
     required this.logo,
+    required this.opelLogo,
+    required this.chevroletLogo,
   });
 
   final pw.Font regular;
   final pw.Font bold;
   final pw.ThemeData theme;
   final pw.MemoryImage logo;
+  final pw.MemoryImage opelLogo;
+  final pw.MemoryImage chevroletLogo;
 }
 
 abstract final class PdfBranding {
@@ -41,12 +45,18 @@ abstract final class PdfBranding {
     final bold = pw.Font.ttf(boldData);
     final logoData = await rootBundle.load('assets/images/app_logo.png');
     final logo = pw.MemoryImage(logoData.buffer.asUint8List());
+    final opelData = await rootBundle.load('assets/images/opel.png');
+    final opelLogo = pw.MemoryImage(opelData.buffer.asUint8List());
+    final chevData = await rootBundle.load('assets/images/chevrolet.png');
+    final chevroletLogo = pw.MemoryImage(chevData.buffer.asUint8List());
 
     final bundle = PdfBrandingBundle(
       regular: regular,
       bold: bold,
       theme: pw.ThemeData.withFont(base: regular, bold: bold),
       logo: logo,
+      opelLogo: opelLogo,
+      chevroletLogo: chevroletLogo,
     );
     _cache = bundle;
     return bundle;
@@ -110,7 +120,16 @@ abstract final class PdfBranding {
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        'Tel: $companyPhone',
+                        'Mert Akboru : $companyPhoneMert',
+                        style: pw.TextStyle(
+                          font: bundle.regular,
+                          fontSize: 10,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        'Şükrü Akboru : $companyPhoneSukru',
                         style: pw.TextStyle(
                           font: bundle.regular,
                           fontSize: 10,
@@ -132,10 +151,30 @@ abstract final class PdfBranding {
               ],
             ),
           ),
-          pw.SizedBox(width: 16),
+          pw.SizedBox(width: 12),
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
+              pw.Row(
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  pw.SizedBox(
+                    width: 48,
+                    height: 40,
+                    child: pw.Image(bundle.opelLogo, fit: pw.BoxFit.contain),
+                  ),
+                  pw.SizedBox(width: 8),
+                  pw.SizedBox(
+                    width: 48,
+                    height: 40,
+                    child: pw.Image(
+                      bundle.chevroletLogo,
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 6),
               pw.Text(
                 title,
                 style: pw.TextStyle(
@@ -163,6 +202,16 @@ abstract final class PdfBranding {
   static pw.Widget buildPremiumFooter(PdfBrandingBundle bundle) {
     return pw.Column(
       children: [
+        pw.Text(
+          pdfServiceTagline,
+          textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(
+            font: bundle.regular,
+            fontSize: 9,
+            color: PdfColor.fromHex('424242'),
+          ),
+        ),
+        pw.SizedBox(height: 6),
         pw.Divider(color: navy),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,

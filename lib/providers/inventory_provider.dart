@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:otoservis_app/models/inventory_item.dart';
 import 'package:otoservis_app/utils/constants.dart';
 
@@ -53,6 +54,18 @@ class InventoryProvider extends ChangeNotifier {
   String? _inventoryError;
   String? get inventoryError => _inventoryError;
 
+  bool _isDisposed = false;
+
+  /// Firestore stream’i bazen aynı karede (ör. stok penceresi kapanırken) tetiklenir;
+  /// o anda [notifyListeners] [InheritedElement] assert hatasına yol açmaması
+  /// için bir sonraki kareye erteler.
+  void _scheduleNotify() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (_isDisposed || !hasListeners) return;
+      notifyListeners();
+    });
+  }
+
   /// Abonelik hata verirse yeniden denemek için.
   void retryInventoryStream() {
     if (_auth.currentUser == null) {
@@ -70,14 +83,14 @@ class InventoryProvider extends ChangeNotifier {
     _categories = [...PartCategories.defaults];
     _inventoryLoading = false;
     _inventoryError = null;
-    notifyListeners();
+    _scheduleNotify();
   }
 
   void _listenInventory() {
     _inventorySub?.cancel();
     _inventoryLoading = true;
     _inventoryError = null;
-    notifyListeners();
+    _scheduleNotify();
 
     _inventorySub = _firestore
         .collection(FirestoreCollections.inventory)
@@ -95,12 +108,12 @@ class InventoryProvider extends ChangeNotifier {
             .toList();
         _inventoryLoading = false;
         _inventoryError = null;
-        notifyListeners();
+        _scheduleNotify();
       },
       onError: (Object e) {
         _inventoryError = e.toString();
         _inventoryLoading = false;
-        notifyListeners();
+        _scheduleNotify();
       },
     );
 
@@ -133,7 +146,7 @@ class InventoryProvider extends ChangeNotifier {
           ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
         _categories = merged;
-        notifyListeners();
+        _scheduleNotify();
       },
       onError: (Object e) {
         debugPrint('CATEGORY STREAM HATASI: $e');
@@ -143,6 +156,7 @@ class InventoryProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _authSub?.cancel();
     _inventorySub?.cancel();
     _categorySub?.cancel();

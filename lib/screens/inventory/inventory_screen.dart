@@ -490,91 +490,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return;
     }
 
-    var selected = items.first;
-    final qtyCtrl = TextEditingController(text: '1');
-    final formKey = GlobalKey<FormState>();
-
-    final ok = await showDialog<bool>(
+    final result = await showDialog<({String itemId, int addQty})?>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Stok girişi'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                StatefulBuilder(
-                  builder: (context, setLocal) {
-                    return DropdownButtonFormField<InventoryItem>(
-                      initialValue: selected,
-                      decoration: const InputDecoration(
-                        labelText: 'Parça',
-                        border: OutlineInputBorder(),
-                      ),
-                      isExpanded: true,
-                      items:
-                          items
-                              .map(
-                                (e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(
-                                    '${e.name} (stok: ${e.quantity})',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: (v) {
-                        if (v != null) setLocal(() => selected = v);
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: qtyCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Eklenecek miktar',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Zorunlu';
-                    final n = int.tryParse(v.trim());
-                    if (n == null || n < 1) return 'En az 1';
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('İptal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(ctx, true);
-                }
-              },
-              child: const Text('Kaydet'),
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => _StockEntryDialog(items: items),
     );
 
-    final addQty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
-    qtyCtrl.dispose();
-
-    if (ok != true || !mounted) return;
+    if (result == null || !mounted) return;
 
     try {
-      await inv.addStockTransaction(itemId: selected.id, addQuantity: addQty);
+      await inv.addStockTransaction(
+        itemId: result.itemId,
+        addQuantity: result.addQty,
+      );
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1070,107 +997,135 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 style: TextStyle(color: Colors.black54),
                               ),
                             )
-                            : Scrollbar(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: SingleChildScrollView(
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      Colors.grey.shade200,
-                                    ),
-                                    columns: const [
-                                      DataColumn(label: Text('Parça adı')),
-                                      DataColumn(label: Text('Kategori')),
-                                      DataColumn(
-                                        label: Text('Stok miktarı'),
-                                        numeric: true,
-                                      ),
-                                      DataColumn(
-                                        label: Text('Birim fiyat'),
-                                        numeric: true,
-                                      ),
-                                      DataColumn(
-                                        label: Text('Min. stok'),
-                                        numeric: true,
-                                      ),
-                                      DataColumn(label: Text('İşlemler')),
-                                    ],
-                                    rows:
-                                        rows.map((item) {
-                                          final c = _rowColor(item);
-                                          return DataRow(
-                                            color:
-                                                c != null
-                                                    ? WidgetStateProperty.all(c)
-                                                    : null,
-                                            cells: [
-                                              DataCell(Text(item.name)),
-                                              DataCell(Text(item.category)),
-                                              DataCell(
-                                                Text(
-                                                  '${item.quantity}',
-                                                  style: TextStyle(
-                                                    fontWeight:
-                                                        item.quantity == 0
-                                                            ? FontWeight.bold
-                                                            : null,
-                                                    color:
-                                                        item.quantity == 0
-                                                            ? Colors
-                                                                .red
-                                                                .shade900
-                                                            : null,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  AppFormatters.formatLira(
-                                                    item.unitPrice,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text('${item.minStockAlert}'),
-                                              ),
-                                              DataCell(
-                                                Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      tooltip: 'Düzenle',
-                                                      icon: const Icon(
-                                                        Icons.edit_outlined,
-                                                        size: 20,
-                                                      ),
-                                                      onPressed:
-                                                          () => _showPartForm(
-                                                            existing: item,
-                                                          ),
+                            : LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Scrollbar(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: SingleChildScrollView(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minWidth: constraints.maxWidth,
+                                        ),
+                                        child: DataTable(
+                                          headingRowColor:
+                                              WidgetStateProperty.all(
+                                            Colors.grey.shade200,
+                                          ),
+                                          columns: const [
+                                            DataColumn(
+                                              label: Text('Parça adı'),
+                                            ),
+                                            DataColumn(
+                                              label: Text('Kategori'),
+                                            ),
+                                            DataColumn(
+                                              label: Text('Stok miktarı'),
+                                              numeric: true,
+                                            ),
+                                            DataColumn(
+                                              label: Text('Birim fiyat'),
+                                              numeric: true,
+                                            ),
+                                            DataColumn(
+                                              label: Text('Min. stok'),
+                                              numeric: true,
+                                            ),
+                                            DataColumn(
+                                              label: Text('İşlemler'),
+                                            ),
+                                          ],
+                                          rows:
+                                              rows.map((item) {
+                                                final c = _rowColor(item);
+                                                return DataRow(
+                                                  color:
+                                                      c != null
+                                                          ? WidgetStateProperty
+                                                              .all(c)
+                                                          : null,
+                                                  cells: [
+                                                    DataCell(Text(item.name)),
+                                                    DataCell(
+                                                      Text(item.category),
                                                     ),
-                                                    IconButton(
-                                                      tooltip: 'Sil',
-                                                      icon: Icon(
-                                                        Icons.delete_outline,
-                                                        size: 20,
-                                                        color:
-                                                            Colors.red.shade700,
+                                                    DataCell(
+                                                      Text(
+                                                        '${item.quantity}',
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              item.quantity ==
+                                                                  0
+                                                              ? FontWeight
+                                                                  .bold
+                                                              : null,
+                                                          color:
+                                                              item.quantity ==
+                                                                  0
+                                                              ? Colors
+                                                                    .red
+                                                                    .shade900
+                                                              : null,
+                                                        ),
                                                       ),
-                                                      onPressed:
-                                                          () => _confirmDelete(
-                                                            item,
+                                                    ),
+                                                    DataCell(
+                                                      Text(
+                                                        AppFormatters
+                                                            .formatLira(
+                                                          item.unitPrice,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    DataCell(
+                                                      Text(
+                                                        '${item.minStockAlert}',
+                                                      ),
+                                                    ),
+                                                    DataCell(
+                                                      Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          IconButton(
+                                                            tooltip: 'Düzenle',
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .edit_outlined,
+                                                              size: 20,
+                                                            ),
+                                                            onPressed: () =>
+                                                                _showPartForm(
+                                                              existing: item,
+                                                            ),
                                                           ),
+                                                          IconButton(
+                                                            tooltip: 'Sil',
+                                                            icon: Icon(
+                                                              Icons
+                                                                  .delete_outline,
+                                                              size: 20,
+                                                              color: Colors
+                                                                  .red
+                                                                  .shade700,
+                                                            ),
+                                                            onPressed: () =>
+                                                                _confirmDelete(
+                                                              item,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ],
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList(),
+                                                );
+                                              }).toList(),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
                   ),
                 ],
@@ -1179,6 +1134,107 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StockEntryDialog extends StatefulWidget {
+  const _StockEntryDialog({required this.items});
+  final List<InventoryItem> items;
+
+  @override
+  State<_StockEntryDialog> createState() => _StockEntryDialogState();
+}
+
+class _StockEntryDialogState extends State<_StockEntryDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _qtyCtrl = TextEditingController(text: '1');
+  late InventoryItem _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.items.first;
+  }
+
+  @override
+  void dispose() {
+    _qtyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Stok girişi'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<InventoryItem>(
+              isExpanded: true,
+              initialValue: _selected,
+              decoration: const InputDecoration(
+                labelText: 'Parça',
+                border: OutlineInputBorder(),
+              ),
+              items: widget.items
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        '${e.name} (stok: ${e.quantity})',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _selected = v);
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _qtyCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: 'Eklenecek miktar',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Zorunlu';
+                final n = int.tryParse(v.trim());
+                if (n == null || n < 1) return 'En az 1';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('İptal'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (!(_formKey.currentState?.validate() ?? false)) {
+              return;
+            }
+            final addQty = int.tryParse(_qtyCtrl.text.trim()) ?? 0;
+            if (addQty < 1) {
+              return;
+            }
+            Navigator.of(context).pop((
+              itemId: _selected.id,
+              addQty: addQty,
+            ));
+          },
+          child: const Text('Kaydet'),
+        ),
+      ],
     );
   }
 }

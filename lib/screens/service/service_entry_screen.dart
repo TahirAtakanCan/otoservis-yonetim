@@ -528,13 +528,17 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               const Icon(
                                 Icons.directions_car_filled_outlined,
                                 color: AppColors.primaryNavy,
                               ),
                               const SizedBox(width: 10),
-                              Expanded(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 200,
+                                ),
                                 child: TextField(
                                   controller: _plateController,
                                   readOnly: true,
@@ -543,6 +547,23 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                   decoration: const InputDecoration(
                                     labelText: 'Araç plakası',
                                     hintText: 'Örn: 34 ABC 123',
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: _vehicleKmController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(8),
+                                  ],
+                                  decoration: const InputDecoration(
+                                    labelText: 'Araç KM (bu servis)',
+                                    hintText: 'Örn: 128500',
                                     border: OutlineInputBorder(),
                                     isDense: true,
                                   ),
@@ -1039,22 +1060,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
               ),
             ),
             const SizedBox(height: 12),
-            Text('Araç KM', style: Theme.of(context).textTheme.labelSmall),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _vehicleKmController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(8),
-              ],
-              decoration: const InputDecoration(
-                hintText: 'Örn: 128500',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 10),
             Text('Teknisyen', style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(height: 4),
             TextField(
