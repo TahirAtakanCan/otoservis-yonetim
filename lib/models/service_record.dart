@@ -7,6 +7,7 @@ class ServicePart {
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
+    this.isManual = false,
   });
 
   final String partId;
@@ -15,12 +16,16 @@ class ServicePart {
   final double unitPrice;
   final double totalPrice;
 
+  /// Stok dışı (elle girilen) satırlar; [true] ise envanterden düşülmez.
+  final bool isManual;
+
   ServicePart copyWith({
     String? partId,
     String? partName,
     int? quantity,
     double? unitPrice,
     double? totalPrice,
+    bool? isManual,
   }) {
     return ServicePart(
       partId: partId ?? this.partId,
@@ -28,6 +33,7 @@ class ServicePart {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       totalPrice: totalPrice ?? this.totalPrice,
+      isManual: isManual ?? this.isManual,
     );
   }
 
@@ -38,6 +44,7 @@ class ServicePart {
       quantity: (map['quantity'] as num?)?.toInt() ?? 0,
       unitPrice: (map['unitPrice'] as num?)?.toDouble() ?? 0,
       totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0,
+      isManual: (map['isManual'] as bool?) ?? false,
     );
   }
 
@@ -48,6 +55,7 @@ class ServicePart {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'totalPrice': totalPrice,
+      'isManual': isManual,
     };
   }
 }

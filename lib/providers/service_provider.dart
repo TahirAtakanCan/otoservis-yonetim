@@ -36,6 +36,7 @@ class ServiceProvider extends ChangeNotifier {
         final invSnaps = <String, DocumentSnapshot<Map<String, dynamic>>>{};
 
         for (final p in full.parts) {
+          if (p.isManual) continue;
           final ref = _firestore
               .collection(FirestoreCollections.inventory)
               .doc(p.partId);
@@ -43,6 +44,7 @@ class ServiceProvider extends ChangeNotifier {
         }
 
         for (final p in full.parts) {
+          if (p.isManual) continue;
           final snap = invSnaps[p.partId]!;
           if (!snap.exists) {
             throw StateError('Stokta bulunamadı: ${p.partName}');
@@ -62,6 +64,7 @@ class ServiceProvider extends ChangeNotifier {
         transaction.set(serviceRef, full.toMap());
 
         for (final p in full.parts) {
+          if (p.isManual) continue;
           final ref = _firestore
               .collection(FirestoreCollections.inventory)
               .doc(p.partId);

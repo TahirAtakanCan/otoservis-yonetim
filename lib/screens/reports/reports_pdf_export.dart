@@ -891,8 +891,10 @@ abstract final class ReportsPdfExport {
     final agg = <String, ({int q, double t, String cat})>{};
     for (final r in records) {
       for (final pt in r.parts) {
-        final inv = byId[pt.partId] ?? byName[pt.partName];
-        final cat = inv?.category ?? '—';
+        final inv = pt.isManual
+            ? null
+            : (byId[pt.partId] ?? byName[pt.partName]);
+        final cat = pt.isManual ? 'Harici' : (inv?.category ?? '—');
         final prev = agg[pt.partName];
         final resolvedCat = (prev != null && prev.cat != '—') ? prev.cat : cat;
         agg[pt.partName] = (

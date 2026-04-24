@@ -247,7 +247,13 @@ class PdfTemplate {
               color: i.isEven ? PdfColors.white : PdfBranding.zebra,
             ),
             children: [
-              _cell(part.partName, bodyStyle, alignRight: false),
+              _cell(
+                part.isManual
+                    ? '${part.partName} (Harici)'
+                    : part.partName,
+                bodyStyle,
+                alignRight: false,
+              ),
               _cell('${part.quantity}', bodyStyle),
               _cell(moneyFmt.format(part.unitPrice), bodyStyle),
               _cell(moneyFmt.format(part.totalPrice), bodyStyle),
