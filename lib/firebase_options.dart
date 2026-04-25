@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
   }
 
   /// Web (Chrome). Değerleri Firebase Console → Project settings → Your apps → Web uygulamasından alın.
-  /// Şimdilik Windows ile aynı projedeki web kaydı kullanılıyor; ayrı bir Web app eklediyseniz `appId` vb. güncelleyin.
+
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyA9r0zToU8R00NuLGc11hxur4dSJcYnghs',
     appId: '1:658591153273:web:813a7e7e50f83b81cc68a8',
@@ -60,6 +60,8 @@ class DefaultFirebaseOptions {
     storageBucket: 'otoservis-yonetim.firebasestorage.app',
   );
 
+  /// Şimdilik Windows ile aynı projedeki web kaydı kullanılıyor; ayrı bir Web app eklediyseniz `appId` vb. güncelleyin.
+
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyA9r0zToU8R00NuLGc11hxur4dSJcYnghs',
     appId: '1:658591153273:web:813a7e7e50f83b81cc68a8',
@@ -68,4 +70,5 @@ class DefaultFirebaseOptions {
     authDomain: 'otoservis-yonetim.firebaseapp.com',
     storageBucket: 'otoservis-yonetim.firebasestorage.app',
   );
+
 }
