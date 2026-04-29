@@ -21,10 +21,12 @@ class Vehicle {
   final int year;
   final int currentKm;
   final DateTime createdAt;
+
   /// Araçla ilgili problem/arıza notları (birden fazla kayıt olabilir).
   ///
-  /// Firestore'da `issueNotes` alanı altında saklanır.
-  final List<String> issueNotes;
+  /// Her not: {text: String, addedAt: DateTime} şeklinde saklanır.
+  /// Firestore'da `issueNotes` alanı altında tutulur.
+  final List<Map<String, dynamic>> issueNotes;
 
   Vehicle copyWith({
     String? plate,
@@ -35,7 +37,7 @@ class Vehicle {
     int? year,
     int? currentKm,
     DateTime? createdAt,
-    List<String>? issueNotes,
+    List<Map<String, dynamic>>? issueNotes,
   }) {
     return Vehicle(
       plate: plate ?? this.plate,
@@ -74,7 +76,16 @@ class Vehicle {
       'year': year,
       'currentKm': currentKm,
       'createdAt': Timestamp.fromDate(createdAt),
-      'issueNotes': issueNotes,
+      'issueNotes':
+          issueNotes.map((note) {
+            return {
+              'text': note['text'] ?? '',
+              'addedAt':
+                  note['addedAt'] is DateTime
+                      ? Timestamp.fromDate(note['addedAt'] as DateTime)
+                      : note['addedAt'],
+            };
+          }).toList(),
     };
   }
 
@@ -84,23 +95,45 @@ class Vehicle {
     return DateTime.now();
   }
 
-  static List<String> _parseIssueNotes(dynamic value) {
+  static List<Map<String, dynamic>> _parseIssueNotes(dynamic value) {
     if (value == null) return const [];
+
     if (value is List) {
-      return value
-          .map((e) => e?.toString().trim() ?? '')
-          .where((s) => s.isNotEmpty)
-          .toList();
+      final result = <Map<String, dynamic>>[];
+      for (final e in value) {
+        if (e == null) continue;
+        
+        // Yeni format: Map<String, dynamic> ile
+        if (e is Map<String, dynamic>) {
+          result.add({
+            'text': (e['text'] ?? '').toString().trim(),
+            'addedAt': _toDateTime(e['addedAt']),
+          });
+        }
+        // Eski format: String olarak geldiyse (backward compatibility)
+        else if (e is String && e.isNotEmpty) {
+          result.add({
+            'text': e.trim(),
+            'addedAt': DateTime.now(),
+          });
+        }
+      }
+      return result;
     }
-    if (value is String) {
-      // Eski/yanlış biçimlendirme durumunda tek string geldiyse satır satır böl.
+
+    if (value is String && value.isNotEmpty) {
+      // Eski/yanlış biçimlendirme: tek string geldiyse satır satır böl
       return value
           .split('\n')
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
+          .map((text) => {
+            'text': text,
+            'addedAt': DateTime.now(),
+          })
           .toList();
     }
+
     return const [];
   }
 }
-

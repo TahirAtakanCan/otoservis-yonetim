@@ -235,7 +235,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
   Widget build(BuildContext context) {
     final vp = context.watch<VehicleProvider>();
     final v = _vehicle;
-    final vehicleIssues = v?.issueNotes ?? const <String>[];
+    final vehicleIssues = v?.issueNotes ?? const <Map<String, dynamic>>[];
     const maxIssuesShown = 3;
     final shownIssues =
         vehicleIssues.length > maxIssuesShown
@@ -371,26 +371,54 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                       ...shownIssues.map(
                                         (note) => Padding(
                                           padding: const EdgeInsets.only(
-                                            bottom: 6,
+                                            bottom: 10,
                                           ),
-                                          child: Row(
+                                          child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                '• ',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.orange.shade700,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '• ',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color:
+                                                          Colors
+                                                              .orange
+                                                              .shade700,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    child: Text(
+                                                      note['text'] ?? '',
+                                                      style: const TextStyle(
+                                                        fontSize: 13.5,
+                                                        height: 1.4,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              Expanded(
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 14,
+                                                  top: 4,
+                                                ),
                                                 child: Text(
-                                                  note,
-                                                  style: const TextStyle(
-                                                    fontSize: 13.5,
-                                                    height: 1.4,
+                                                  AppFormatters.formatDateTime(
+                                                    note['addedAt'] is DateTime
+                                                        ? note['addedAt']
+                                                            as DateTime
+                                                        : DateTime.now(),
+                                                  ),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade600,
                                                   ),
                                                 ),
                                               ),

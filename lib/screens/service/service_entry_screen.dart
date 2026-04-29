@@ -33,10 +33,12 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   final _vehicleKmController = TextEditingController();
   final _technicianController = TextEditingController();
   final _notesController = TextEditingController();
+  final _newIssueController = TextEditingController();
   Timer? _searchDebounce;
 
   final List<ServicePart> _parts = [];
   final List<LaborItem> _labor = [];
+  final List<Map<String, dynamic>> _newIssueNotes = [];
 
   final _stockSearchFocus = FocusNode();
 
@@ -54,11 +56,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
   static const Color _pageBg = Color(0xFFF0F2F5);
   static const Color _cardLine = Color(0xFFE2E8F0);
   static const List<BoxShadow> _cardShadow = [
-    BoxShadow(
-      color: Color(0x0D000000),
-      blurRadius: 20,
-      offset: Offset(0, 4),
-    ),
+    BoxShadow(color: Color(0x0D000000), blurRadius: 20, offset: Offset(0, 4)),
   ];
 
   BoxDecoration _panelShell({Color? color}) {
@@ -124,9 +122,8 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       _plateController.selection = TextSelection.collapsed(
         offset: _plateController.text.length,
       );
-      _vehicleKmController.text = vehicle.currentKm > 0
-          ? '${vehicle.currentKm}'
-          : '';
+      _vehicleKmController.text =
+          vehicle.currentKm > 0 ? '${vehicle.currentKm}' : '';
 
       setState(() {
         _resolvingVehicle = false;
@@ -150,6 +147,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     _vehicleKmController.dispose();
     _technicianController.dispose();
     _notesController.dispose();
+    _newIssueController.dispose();
     _stockSearchFocus.dispose();
     super.dispose();
   }
@@ -178,6 +176,198 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
 
   double _grandTotal() {
     return double.parse((_subtotal() + _kdvAmount()).toStringAsFixed(2));
+  }
+
+  void _addIssueNote() {
+    final text = _newIssueController.text.trim();
+    if (text.isNotEmpty) {
+      setState(() {
+        _newIssueNotes.add({'text': text, 'addedAt': DateTime.now()});
+        _newIssueController.clear();
+      });
+    }
+  }
+
+  void _removeNewIssueNote(int index) {
+    setState(() {
+      if (index >= 0 && index < _newIssueNotes.length) {
+        _newIssueNotes.removeAt(index);
+      }
+    });
+  }
+
+  Widget _buildCurrentAndNewIssues() {
+    final vp = context.read<VehicleProvider>();
+    final currentIssues = vp.selectedVehicle?.issueNotes ?? const [];
+    final allIssues = [...currentIssues, ..._newIssueNotes];
+
+    if (allIssues.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: Color(0xFF121212),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Araç Arızaları',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border.all(color: _cardLine),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ...allIssues.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final issue = entry.value;
+                final isNew = idx >= currentIssues.length;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (idx > 0) const Divider(height: 1, color: _cardLine),
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '• ',
+                            style: TextStyle(
+                              color:
+                                  isNew
+                                      ? Colors.blue.shade600
+                                      : Colors.orange.shade700,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  issue['text'] ?? '',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  AppFormatters.formatDateTime(
+                                    issue['addedAt'] is DateTime
+                                        ? issue['addedAt'] as DateTime
+                                        : DateTime.now(),
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                if (isNew)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      '(Yeni)',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.blue.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (isNew)
+                            IconButton(
+                              iconSize: 18,
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                              onPressed:
+                                  () => _removeNewIssueNote(
+                                    idx - currentIssues.length,
+                                  ),
+                              icon: const Icon(Icons.close, size: 18),
+                              color: Colors.red.shade600,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }),
+              const Divider(height: 1, color: _cardLine),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newIssueController,
+                        maxLines: 2,
+                        minLines: 1,
+                        style: const TextStyle(fontSize: 12.5),
+                        decoration: InputDecoration(
+                          hintText: 'Yeni arıza notu ekle...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12.5,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: _cardLine),
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FloatingActionButton.small(
+                      heroTag: 'add_issue',
+                      backgroundColor: Colors.blue.shade600,
+                      onPressed: _addIssueNote,
+                      child: const Icon(Icons.add, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   void _onSearchChanged(String value) {
@@ -311,7 +501,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             int qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
             double price =
                 double.tryParse(priceCtrl.text.trim().replaceAll(',', '.')) ??
-                    0;
+                0;
             final total = qty * price;
 
             return AlertDialog(
@@ -367,9 +557,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                           decimal: true,
                         ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9.,]'),
-                          ),
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                         ],
                         decoration: const InputDecoration(
                           labelText: 'Birim fiyat (₺)',
@@ -426,9 +614,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
 
       final name = nameCtrl.text.trim();
       final q = int.parse(qtyCtrl.text.trim());
-      final unitP = double.parse(
-        priceCtrl.text.trim().replaceAll(',', '.'),
-      );
+      final unitP = double.parse(priceCtrl.text.trim().replaceAll(',', '.'));
 
       if (!mounted) return;
       setState(() {
@@ -633,6 +819,16 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     );
 
     try {
+      // Yeni arıza notlarını save et
+      if (_newIssueNotes.isNotEmpty) {
+        final vehicle = vp.selectedVehicle;
+        if (vehicle != null) {
+          final updatedNotes = [...vehicle.issueNotes, ..._newIssueNotes];
+          final updatedVehicle = vehicle.copyWith(issueNotes: updatedNotes);
+          await vp.saveVehicle(updatedVehicle);
+        }
+      }
+
       final id = await svc.completeServiceAndDeductStock(record: record);
       if (!mounted) return;
       context.go('/pdf/preview/$id');
@@ -823,6 +1019,8 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                         ),
                       ),
                       const SizedBox(height: 14),
+                      _buildCurrentAndNewIssues(),
+                      const SizedBox(height: 14),
                       Expanded(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -893,10 +1091,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             const SizedBox(height: 4),
             Text(
               'Listeden tıklayarak sepete ekleyin',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -976,16 +1171,16 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                           final item = visibleItems[i];
                           final disabled = item.quantity <= 0;
                           return Material(
-                            color: disabled
-                                ? Colors.red.shade50
-                                : const Color(0xFFF8FAFC),
+                            color:
+                                disabled
+                                    ? Colors.red.shade50
+                                    : const Color(0xFFF8FAFC),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
-                                color: disabled
-                                    ? Colors.red.shade200
-                                    : _cardLine,
+                                color:
+                                    disabled ? Colors.red.shade200 : _cardLine,
                               ),
                             ),
                             child: ListTile(
@@ -1008,18 +1203,20 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                 'Stok: ${item.quantity} · ${AppFormatters.formatLira(item.unitPrice)}',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: disabled
-                                      ? Colors.red.shade700
-                                      : Colors.grey.shade600,
+                                  color:
+                                      disabled
+                                          ? Colors.red.shade700
+                                          : Colors.grey.shade600,
                                 ),
                               ),
                               trailing: Icon(
                                 disabled
                                     ? Icons.block_outlined
                                     : Icons.add_circle_rounded,
-                                color: disabled
-                                    ? Colors.red.shade700
-                                    : AppColors.secondaryOrange,
+                                color:
+                                    disabled
+                                        ? Colors.red.shade700
+                                        : AppColors.secondaryOrange,
                                 size: 22,
                               ),
                               onTap:
@@ -1087,10 +1284,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                   fontWeight: FontWeight.w500,
                   fontSize: 13,
                 ),
-                tabs: const [
-                  Tab(text: 'Parçalar'),
-                  Tab(text: 'İşçilik'),
-                ],
+                tabs: const [Tab(text: 'Parçalar'), Tab(text: 'İşçilik')],
               ),
             ),
           ),
@@ -1131,11 +1325,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                     color: AppColors.secondaryOrange.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    icon,
-                    size: 30,
-                    color: AppColors.primaryNavy,
-                  ),
+                  child: Icon(icon, size: 30, color: AppColors.primaryNavy),
                 ),
                 const SizedBox(height: 14),
                 Text(
@@ -1170,13 +1360,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     final btnStyle = OutlinedButton.styleFrom(
       foregroundColor: AppColors.primaryNavy,
       backgroundColor: Colors.white,
-      side: BorderSide(
-        color: AppColors.primaryNavy.withValues(alpha: 0.18),
-      ),
+      side: BorderSide(color: AppColors.primaryNavy.withValues(alpha: 0.18)),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1243,9 +1429,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                           : (i.isEven
                                               ? Colors.white
                                               : AppColors.surfaceMuted
-                                                    .withValues(
-                                                      alpha: 0.7,
-                                                    )),
+                                                  .withValues(alpha: 0.7)),
                                     ),
                                     cells: [
                                       DataCell(
@@ -1257,9 +1441,10 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                                   ? Icons.edit_outlined
                                                   : Icons.inventory_2_outlined,
                                               size: 18,
-                                              color: isManual
-                                                  ? Colors.amber.shade800
-                                                  : AppColors.primaryNavy,
+                                              color:
+                                                  isManual
+                                                      ? Colors.amber.shade800
+                                                      : AppColors.primaryNavy,
                                             ),
                                             const SizedBox(width: 6),
                                             Flexible(
@@ -1275,9 +1460,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                       DataCell(Text('${p.quantity}')),
                                       DataCell(
                                         Text(
-                                          AppFormatters.formatLira(
-                                            p.unitPrice,
-                                          ),
+                                          AppFormatters.formatLira(p.unitPrice),
                                         ),
                                       ),
                                       DataCell(
@@ -1442,10 +1625,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
             const SizedBox(height: 6),
             Text(
               'Fiyatlandırma özeti',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
@@ -1477,10 +1657,10 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                         child: Switch(
                           value: _kdvIncluded,
                           activeThumbColor: AppColors.secondaryOrange,
-                          activeTrackColor: AppColors.primaryNavy
-                              .withValues(alpha: 0.45),
-                          onChanged: (v) =>
-                              setState(() => _kdvIncluded = v),
+                          activeTrackColor: AppColors.primaryNavy.withValues(
+                            alpha: 0.45,
+                          ),
+                          onChanged: (v) => setState(() => _kdvIncluded = v),
                         ),
                       ),
                     ],
@@ -1526,10 +1706,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F0F0F),
-                    Color(0xFF1E1E1E),
-                  ],
+                  colors: [Color(0xFF0F0F0F), Color(0xFF1E1E1E)],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
@@ -1564,8 +1741,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                       children: [
                         Text(
                           'GENEL TOPLAM',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(
                             color: Colors.white70,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.6,
@@ -1575,8 +1753,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                         const SizedBox(height: 6),
                         Text(
                           AppFormatters.formatLira(_grandTotal()),
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: -0.5,
@@ -1658,8 +1837,8 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                 saving
                     ? 'Kaydediliyor…'
                     : online
-                        ? 'Servisi tamamla'
-                        : 'İnternet gerekir',
+                    ? 'Servisi tamamla'
+                    : 'İnternet gerekir',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               style: FilledButton.styleFrom(

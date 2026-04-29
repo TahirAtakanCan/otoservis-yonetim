@@ -76,11 +76,13 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
         throw ArgumentError('Geçerli plaka girin.');
       }
 
-      final issues = _issuesCtrl.text
-          .split('\n')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
+      final issues =
+          _issuesCtrl.text
+              .split('\n')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .map((text) => {'text': text, 'addedAt': DateTime.now()})
+              .toList();
 
       final vehicle = Vehicle(
         plate: normalizedPlate,
@@ -279,9 +281,10 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                                         isWide
                                             ? (constraints.maxWidth - 16) / 2
                                             : constraints.maxWidth;
-                                    final fullWidth = isWide
-                                        ? constraints.maxWidth
-                                        : fieldWidth;
+                                    final fullWidth =
+                                        isWide
+                                            ? constraints.maxWidth
+                                            : fieldWidth;
 
                                     return Wrap(
                                       spacing: 16,
@@ -310,7 +313,9 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                                             inputFormatters: [
                                               TurkishMobilePhoneTextInputFormatter(),
                                             ],
-                                            validator: AppFormatters.validateVehiclePhone,
+                                            validator:
+                                                AppFormatters
+                                                    .validateVehiclePhone,
                                           ),
                                         ),
                                         SizedBox(

@@ -9,7 +9,7 @@ import 'package:otoservis_app/utils/formatters.dart';
 
 class VehicleProvider extends ChangeNotifier {
   VehicleProvider({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -32,8 +32,9 @@ class VehicleProvider extends ChangeNotifier {
     final key = normalizePlate(plate);
     if (key.isEmpty) return null;
 
-    final docRef =
-        _firestore.collection(FirestoreCollections.vehicles).doc(key);
+    final docRef = _firestore
+        .collection(FirestoreCollections.vehicles)
+        .doc(key);
     final snap = await docRef.get();
     if (snap.exists && snap.data() != null) {
       return Vehicle.fromMap({
@@ -42,11 +43,12 @@ class VehicleProvider extends ChangeNotifier {
       });
     }
 
-    final query = await _firestore
-        .collection(FirestoreCollections.vehicles)
-        .where('plate', isEqualTo: key)
-        .limit(1)
-        .get();
+    final query =
+        await _firestore
+            .collection(FirestoreCollections.vehicles)
+            .where('plate', isEqualTo: key)
+            .limit(1)
+            .get();
     if (query.docs.isEmpty) return null;
     final d = query.docs.first;
     return Vehicle.fromMap({...d.data(), 'plate': d.data()['plate'] ?? key});
@@ -57,19 +59,21 @@ class VehicleProvider extends ChangeNotifier {
     final key = normalizePlate(plate);
     if (key.isEmpty) return [];
 
-    final snap = await _firestore
-        .collection(FirestoreCollections.serviceRecords)
-        .where('vehiclePlate', isEqualTo: key)
-        .get();
+    final snap =
+        await _firestore
+            .collection(FirestoreCollections.serviceRecords)
+            .where('vehiclePlate', isEqualTo: key)
+            .get();
 
-    final list = snap.docs.map((doc) {
-      final data = doc.data();
-      return ServiceRecord.fromMap({
-        ...data,
-        'id': doc.id,
-        'vehiclePlate': data['vehiclePlate'] ?? key,
-      });
-    }).toList();
+    final list =
+        snap.docs.map((doc) {
+          final data = doc.data();
+          return ServiceRecord.fromMap({
+            ...data,
+            'id': doc.id,
+            'vehiclePlate': data['vehiclePlate'] ?? key,
+          });
+        }).toList();
 
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;
@@ -83,7 +87,9 @@ class VehicleProvider extends ChangeNotifier {
     }
     final toSave = vehicle.copyWith(plate: key);
 
-    final docRef = _firestore.collection(FirestoreCollections.vehicles).doc(key);
+    final docRef = _firestore
+        .collection(FirestoreCollections.vehicles)
+        .doc(key);
     final existing = await docRef.get();
 
     if (!existing.exists) {
@@ -91,11 +97,22 @@ class VehicleProvider extends ChangeNotifier {
       await docRef.set(toSave.toMap());
       _selectedVehicle = toSave;
     } else {
-      // Mevcut kayıt: sorunu/arıza notlarını silmeden ekle.
-      final issues = toSave.issueNotes
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
+      // Mevcut kayıt: arıza notlarını silmeden ekle.
+      final issues =
+          toSave.issueNotes
+              .where(
+                (note) => (note['text'] ?? '').toString().trim().isNotEmpty,
+              )
+              .map(
+                (note) => {
+                  'text': (note['text'] ?? '').toString().trim(),
+                  'addedAt':
+                      note['addedAt'] is DateTime
+                          ? Timestamp.fromDate(note['addedAt'] as DateTime)
+                          : note['addedAt'],
+                },
+              )
+              .toList();
 
       final updateData = <String, dynamic>{
         'plate': key,
@@ -163,10 +180,11 @@ class VehicleProvider extends ChangeNotifier {
     final key = normalizePlate(plate);
     if (key.isEmpty) throw ArgumentError('Geçersiz plaka');
 
-    final recordsSnap = await _firestore
-        .collection(FirestoreCollections.serviceRecords)
-        .where('vehiclePlate', isEqualTo: key)
-        .get();
+    final recordsSnap =
+        await _firestore
+            .collection(FirestoreCollections.serviceRecords)
+            .where('vehiclePlate', isEqualTo: key)
+            .get();
 
     const chunkSize = 450;
     final docs = recordsSnap.docs;
@@ -179,7 +197,10 @@ class VehicleProvider extends ChangeNotifier {
       await batch.commit();
     }
 
-    await _firestore.collection(FirestoreCollections.vehicles).doc(key).delete();
+    await _firestore
+        .collection(FirestoreCollections.vehicles)
+        .doc(key)
+        .delete();
 
     if (_selectedVehicle?.plate == key) {
       _selectedVehicle = null;
@@ -205,10 +226,11 @@ class VehicleProvider extends ChangeNotifier {
     final key = normalizePlate(plate);
     if (key.isEmpty) throw ArgumentError('Geçersiz plaka');
 
-    final recordsSnap = await _firestore
-        .collection(FirestoreCollections.serviceRecords)
-        .where('vehiclePlate', isEqualTo: key)
-        .get();
+    final recordsSnap =
+        await _firestore
+            .collection(FirestoreCollections.serviceRecords)
+            .where('vehiclePlate', isEqualTo: key)
+            .get();
 
     const chunkSize = 450;
     final docs = recordsSnap.docs;

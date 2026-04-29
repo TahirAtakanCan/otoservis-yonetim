@@ -206,6 +206,10 @@ Future<Vehicle?> showAddVehicleDialog(
                                   .split('\n')
                                   .map((s) => s.trim())
                                   .where((s) => s.isNotEmpty)
+                                  .map((text) => {
+                                    'text': text,
+                                    'addedAt': DateTime.now(),
+                                  })
                                   .toList();
 
                               final vehicle = Vehicle(
