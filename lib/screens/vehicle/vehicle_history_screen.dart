@@ -170,9 +170,9 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
       setState(() {
         _records.removeWhere((r) => r.id == record.id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Servis kaydı silindi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Servis kaydı silindi.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -220,9 +220,9 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
       final deleted = await vp.deleteServiceHistoryForPlate(_vehicle!.plate);
       if (!mounted) return;
       setState(() => _records = []);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$deleted servis kaydı silindi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$deleted servis kaydı silindi.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -238,7 +238,9 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
     final vehicleIssues = v?.issueNotes ?? const <String>[];
     const maxIssuesShown = 3;
     final shownIssues =
-        vehicleIssues.length > maxIssuesShown ? vehicleIssues.take(maxIssuesShown).toList() : vehicleIssues;
+        vehicleIssues.length > maxIssuesShown
+            ? vehicleIssues.take(maxIssuesShown).toList()
+            : vehicleIssues;
     final hiddenCount = vehicleIssues.length - shownIssues.length;
     return Scaffold(
       body: Row(
@@ -349,6 +351,73 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
+                            if (vehicleIssues.isNotEmpty) ...[
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Araç Arızaları',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      ...shownIssues.map(
+                                        (note) => Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 6,
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '• ',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.orange.shade700,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  note,
+                                                  style: const TextStyle(
+                                                    fontSize: 13.5,
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      if (hiddenCount > 0)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 6,
+                                          ),
+                                          child: Text(
+                                            '+$hiddenCount daha',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey.shade600,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
                             Row(
                               children: [
                                 Expanded(
@@ -357,9 +426,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.w700),
                                   ),
                                 ),
                                 if (_records.isNotEmpty)
@@ -392,149 +459,106 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                 ),
                               )
                             else
-                              ..._records.asMap().entries.map(
-                                (entry) {
-                                  final i = entry.key;
-                                  final r = entry.value;
-                                  final kmLine = _kmInfoLine(i);
-                                  final summary = _summary(r);
-                                  final subtitle =
-                                      kmLine == null ? summary : '$summary\n$kmLine';
+                              ..._records.asMap().entries.map((entry) {
+                                final i = entry.key;
+                                final r = entry.value;
+                                final kmLine = _kmInfoLine(i);
+                                final summary = _summary(r);
+                                final subtitle =
+                                    kmLine == null
+                                        ? summary
+                                        : '$summary\n$kmLine';
 
-                                  return Card(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    child: Column(
-                                      children: [
-                                        ListTile(
-                                          onTap: () => _openPdfPreview(r),
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 8,
-                                          ),
-                                          title: Text(
-                                            AppFormatters.formatDateTime(r.date),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  child: Column(
+                                    children: [
+                                      ListTile(
+                                        onTap: () => _openPdfPreview(r),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 8,
                                             ),
-                                          ),
-                                          subtitle: Padding(
-                                            padding: const EdgeInsets.only(top: 6),
-                                            child: Text(
-                                              subtitle,
-                                              maxLines: 4,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          trailing: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
-                                                children: [
-                                                  Text(
-                                                    AppFormatters.formatLira(
-                                                      r.grandTotal,
-                                                    ),
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 15,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    _statusLabel(r.status),
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: _statusColor(
-                                                        r.status,
-                                                      ),
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              PopupMenuButton<String>(
-                                                tooltip: 'İşlemler',
-                                                onSelected: (value) {
-                                                  if (value == 'pdf') {
-                                                    _openPdfPreview(r);
-                                                    return;
-                                                  }
-                                                  if (value == 'delete') {
-                                                    _confirmDeleteRecord(r);
-                                                  }
-                                                },
-                                                itemBuilder:
-                                                    (ctx) => const [
-                                                  PopupMenuItem<String>(
-                                                    value: 'pdf',
-                                                    child: Text('PDF Aç'),
-                                                  ),
-                                                  PopupMenuItem<String>(
-                                                    value: 'delete',
-                                                    child: Text(
-                                                      'Servis Kaydını Sil',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                        title: Text(
+                                          AppFormatters.formatDateTime(r.date),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        if (vehicleIssues.isNotEmpty) ...[
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              16,
-                                              0,
-                                              16,
-                                              12,
-                                            ),
-                                            child: Column(
+                                        subtitle: Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 6,
+                                          ),
+                                          child: Text(
+                                            subtitle,
+                                            maxLines: 4,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
                                               crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                                  CrossAxisAlignment.end,
                                               children: [
                                                 Text(
-                                                  'Araç arızaları',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodySmall
-                                                      ?.copyWith(
-                                                        fontWeight: FontWeight.w700,
-                                                      ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                ...shownIssues.map(
-                                                  (note) => Text(
-                                                    '- $note',
-                                                    style: const TextStyle(
-                                                      fontSize: 12.5,
-                                                      height: 1.35,
-                                                    ),
+                                                  AppFormatters.formatLira(
+                                                    r.grandTotal,
+                                                  ),
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
                                                   ),
                                                 ),
-                                                if (hiddenCount > 0)
-                                                  Text(
-                                                    '+$hiddenCount daha',
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      height: 1.35,
-                                                      color: Colors.grey.shade700,
-                                                      fontWeight: FontWeight.w600,
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  _statusLabel(r.status),
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: _statusColor(
+                                                      r.status,
                                                     ),
+                                                    fontWeight: FontWeight.w600,
                                                   ),
+                                                ),
                                               ],
                                             ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
+                                            PopupMenuButton<String>(
+                                              tooltip: 'İşlemler',
+                                              onSelected: (value) {
+                                                if (value == 'pdf') {
+                                                  _openPdfPreview(r);
+                                                  return;
+                                                }
+                                                if (value == 'delete') {
+                                                  _confirmDeleteRecord(r);
+                                                }
+                                              },
+                                              itemBuilder:
+                                                  (ctx) => const [
+                                                    PopupMenuItem<String>(
+                                                      value: 'pdf',
+                                                      child: Text('PDF Aç'),
+                                                    ),
+                                                    PopupMenuItem<String>(
+                                                      value: 'delete',
+                                                      child: Text(
+                                                        'Servis Kaydını Sil',
+                                                      ),
+                                                    ),
+                                                  ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
                           ],
                         ),
                       ),
