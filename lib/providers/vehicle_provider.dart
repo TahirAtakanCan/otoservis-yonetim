@@ -82,11 +82,44 @@ class VehicleProvider extends ChangeNotifier {
       throw ArgumentError('Geçersiz plaka');
     }
     final toSave = vehicle.copyWith(plate: key);
-    await _firestore
-        .collection(FirestoreCollections.vehicles)
-        .doc(key)
-        .set(toSave.toMap());
-    _selectedVehicle = toSave;
+
+    final docRef = _firestore.collection(FirestoreCollections.vehicles).doc(key);
+    final existing = await docRef.get();
+
+    if (!existing.exists) {
+      // Yeni kayıt: tüm alanları yaz.
+      await docRef.set(toSave.toMap());
+      _selectedVehicle = toSave;
+    } else {
+      // Mevcut kayıt: sorunu/arıza notlarını silmeden ekle.
+      final issues = toSave.issueNotes
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      final updateData = <String, dynamic>{
+        'plate': key,
+        'ownerName': toSave.ownerName.trim(),
+        'ownerPhone': toSave.ownerPhone.trim(),
+        'brand': toSave.brand.trim(),
+        'model': toSave.model.trim(),
+        'year': toSave.year,
+        'currentKm': toSave.currentKm,
+      };
+
+      if (issues.isNotEmpty) {
+        updateData['issueNotes'] = FieldValue.arrayUnion(issues);
+      }
+
+      await docRef.update(updateData);
+      final updatedSnap = await docRef.get();
+      final updatedData = updatedSnap.data();
+      if (updatedData != null) {
+        _selectedVehicle = Vehicle.fromMap({...updatedData, 'plate': key});
+      } else {
+        _selectedVehicle = toSave;
+      }
+    }
     notifyListeners();
   }
 

@@ -28,6 +28,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
   final _yearCtrl = TextEditingController();
   final _kmCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
+  final _issuesCtrl = TextEditingController();
 
   bool _saving = false;
   String? _error;
@@ -47,6 +48,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
     _yearCtrl.dispose();
     _kmCtrl.dispose();
     _plateCtrl.dispose();
+    _issuesCtrl.dispose();
     super.dispose();
   }
 
@@ -74,6 +76,12 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
         throw ArgumentError('Geçerli plaka girin.');
       }
 
+      final issues = _issuesCtrl.text
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
       final vehicle = Vehicle(
         plate: normalizedPlate,
         ownerName: _ownerNameCtrl.text.trim(),
@@ -83,6 +91,7 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
         year: int.parse(_yearCtrl.text.trim()),
         currentKm: int.parse(_kmCtrl.text.trim()),
         createdAt: DateTime.now(),
+        issueNotes: issues,
       );
 
       await vp.saveVehicle(vehicle);
@@ -270,6 +279,9 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                                         isWide
                                             ? (constraints.maxWidth - 16) / 2
                                             : constraints.maxWidth;
+                                    final fullWidth = isWide
+                                        ? constraints.maxWidth
+                                        : fieldWidth;
 
                                     return Wrap(
                                       spacing: 16,
@@ -401,6 +413,39 @@ class _VehicleAddScreenState extends State<VehicleAddScreen> {
                                               }
                                               return null;
                                             },
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: fullWidth,
+                                          child: TextFormField(
+                                            controller: _issuesCtrl,
+                                            maxLines: 4,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              height: 1.35,
+                                            ),
+                                            decoration: InputDecoration(
+                                              labelText:
+                                                  'Araç sorunu / arıza notu (isteğe bağlı)',
+                                              alignLabelWithHint: true,
+                                              filled: true,
+                                              fillColor: const Color(
+                                                0xFFF8FAFC,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                borderSide: const BorderSide(
+                                                  color: Color(0xFFE2E8F0),
+                                                ),
+                                              ),
+                                              hintText:
+                                                  'Her satıra bir not/arıza yazın.',
+                                            ),
                                           ),
                                         ),
                                       ],

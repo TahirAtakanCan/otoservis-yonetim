@@ -10,6 +10,7 @@ class Vehicle {
     required this.year,
     required this.currentKm,
     required this.createdAt,
+    this.issueNotes = const [],
   });
 
   final String plate;
@@ -20,6 +21,10 @@ class Vehicle {
   final int year;
   final int currentKm;
   final DateTime createdAt;
+  /// Araçla ilgili problem/arıza notları (birden fazla kayıt olabilir).
+  ///
+  /// Firestore'da `issueNotes` alanı altında saklanır.
+  final List<String> issueNotes;
 
   Vehicle copyWith({
     String? plate,
@@ -30,6 +35,7 @@ class Vehicle {
     int? year,
     int? currentKm,
     DateTime? createdAt,
+    List<String>? issueNotes,
   }) {
     return Vehicle(
       plate: plate ?? this.plate,
@@ -40,6 +46,7 @@ class Vehicle {
       year: year ?? this.year,
       currentKm: currentKm ?? this.currentKm,
       createdAt: createdAt ?? this.createdAt,
+      issueNotes: issueNotes ?? this.issueNotes,
     );
   }
 
@@ -53,6 +60,7 @@ class Vehicle {
       year: (map['year'] as num?)?.toInt() ?? 0,
       currentKm: (map['currentKm'] as num?)?.toInt() ?? 0,
       createdAt: _toDateTime(map['createdAt']),
+      issueNotes: _parseIssueNotes(map['issueNotes']),
     );
   }
 
@@ -66,6 +74,7 @@ class Vehicle {
       'year': year,
       'currentKm': currentKm,
       'createdAt': Timestamp.fromDate(createdAt),
+      'issueNotes': issueNotes,
     };
   }
 
@@ -73,6 +82,25 @@ class Vehicle {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
     return DateTime.now();
+  }
+
+  static List<String> _parseIssueNotes(dynamic value) {
+    if (value == null) return const [];
+    if (value is List) {
+      return value
+          .map((e) => e?.toString().trim() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    if (value is String) {
+      // Eski/yanlış biçimlendirme durumunda tek string geldiyse satır satır böl.
+      return value
+          .split('\n')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return const [];
   }
 }
 

@@ -16,6 +16,7 @@ Future<Vehicle?> showAddVehicleDialog(
   final yearCtrl = TextEditingController();
   final kmCtrl = TextEditingController();
   final plateCtrl = TextEditingController(text: initialPlate?.trim() ?? '');
+  final issuesCtrl = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
   void onPlateChanged(String value) {
@@ -158,6 +159,21 @@ Future<Vehicle?> showAddVehicleDialog(
                                     ? 'Zorunlu'
                                     : null,
                       ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: issuesCtrl,
+                        maxLines: 4,
+                        style: const TextStyle(
+                          height: 1.35,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText:
+                              'Araç sorunu / arıza notu (isteğe bağlı)',
+                          alignLabelWithHint: true,
+                          border: OutlineInputBorder(),
+                          hintText: 'Her satıra bir not/arıza yazın.',
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -186,6 +202,12 @@ Future<Vehicle?> showAddVehicleDialog(
                                 throw ArgumentError('Geçerli plaka girin.');
                               }
 
+                              final issues = issuesCtrl.text
+                                  .split('\n')
+                                  .map((s) => s.trim())
+                                  .where((s) => s.isNotEmpty)
+                                  .toList();
+
                               final vehicle = Vehicle(
                                 plate: normalizedPlate,
                                 ownerName: ownerNameCtrl.text.trim(),
@@ -198,6 +220,7 @@ Future<Vehicle?> showAddVehicleDialog(
                                 year: int.parse(yearCtrl.text.trim()),
                                 currentKm: int.parse(kmCtrl.text.trim()),
                                 createdAt: DateTime.now(),
+                                issueNotes: issues,
                               );
 
                               await vp.saveVehicle(vehicle);
@@ -236,5 +259,6 @@ Future<Vehicle?> showAddVehicleDialog(
     yearCtrl.dispose();
     kmCtrl.dispose();
     plateCtrl.dispose();
+    issuesCtrl.dispose();
   }
 }
