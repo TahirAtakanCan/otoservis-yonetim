@@ -188,188 +188,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     }
   }
 
-  void _removeNewIssueNote(int index) {
-    setState(() {
-      if (index >= 0 && index < _newIssueNotes.length) {
-        _newIssueNotes.removeAt(index);
-      }
-    });
-  }
-
-  Widget _buildCurrentAndNewIssues() {
-    final vp = context.read<VehicleProvider>();
-    final currentIssues = vp.selectedVehicle?.issueNotes ?? const [];
-    final allIssues = [...currentIssues, ..._newIssueNotes];
-
-    if (allIssues.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.warning_amber_rounded,
-                  size: 18,
-                  color: Color(0xFF121212),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Araç Arızaları',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: _cardLine),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ...allIssues.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final issue = entry.value;
-                final isNew = idx >= currentIssues.length;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (idx > 0) const Divider(height: 1, color: _cardLine),
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '• ',
-                            style: TextStyle(
-                              color:
-                                  isNew
-                                      ? Colors.blue.shade600
-                                      : Colors.orange.shade700,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  issue['text'] ?? '',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  AppFormatters.formatDateTime(
-                                    issue['addedAt'] is DateTime
-                                        ? issue['addedAt'] as DateTime
-                                        : DateTime.now(),
-                                  ),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                if (isNew)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 3),
-                                    child: Text(
-                                      '(Yeni)',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.blue.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          if (isNew)
-                            IconButton(
-                              iconSize: 18,
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.zero,
-                              onPressed:
-                                  () => _removeNewIssueNote(
-                                    idx - currentIssues.length,
-                                  ),
-                              icon: const Icon(Icons.close, size: 18),
-                              color: Colors.red.shade600,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              }),
-              const Divider(height: 1, color: _cardLine),
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _newIssueController,
-                        maxLines: 2,
-                        minLines: 1,
-                        style: const TextStyle(fontSize: 12.5),
-                        decoration: InputDecoration(
-                          hintText: 'Yeni arıza notu ekle...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 12.5,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: _cardLine),
-                          ),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FloatingActionButton.small(
-                      heroTag: 'add_issue',
-                      backgroundColor: Colors.blue.shade600,
-                      onPressed: _addIssueNote,
-                      child: const Icon(Icons.add, size: 20),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
@@ -939,7 +757,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                         const SizedBox(width: 12),
                                         ConstrainedBox(
                                           constraints: const BoxConstraints(
-                                            maxWidth: 200,
+                                            maxWidth: 150,
                                           ),
                                           child: TextField(
                                             controller: _plateController,
@@ -972,8 +790,9 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 10),
                                         Expanded(
+                                          flex: 1,
                                           child: TextField(
                                             controller: _vehicleKmController,
                                             keyboardType: TextInputType.number,
@@ -988,7 +807,7 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                               fontWeight: FontWeight.w500,
                                             ),
                                             decoration: InputDecoration(
-                                              labelText: 'Araç KM (bu servis)',
+                                              labelText: 'Araç KM',
                                               hintText: 'Örn: 128500',
                                               filled: true,
                                               fillColor: const Color(
@@ -1009,6 +828,43 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                                             ),
                                           ),
                                         ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          flex: 1,
+                                          child: TextField(
+                                            controller: _newIssueController,
+                                            maxLines: 1,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            decoration: InputDecoration(
+                                              labelText: 'Araç Arızası',
+                                              hintText: 'Yeni arıza...',
+                                              filled: true,
+                                              fillColor: const Color(
+                                                0xFFF8FAFC,
+                                              ),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: const BorderSide(
+                                                  color: _cardLine,
+                                                ),
+                                              ),
+                                              isDense: true,
+                                              suffixIcon: IconButton(
+                                                icon: const Icon(Icons.add),
+                                                onPressed: _addIssueNote,
+                                                iconSize: 20,
+                                              ),
+                                            ),
+                                            onSubmitted: (_) => _addIssueNote(),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -1018,8 +874,6 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      _buildCurrentAndNewIssues(),
                       const SizedBox(height: 14),
                       Expanded(
                         child: Row(
