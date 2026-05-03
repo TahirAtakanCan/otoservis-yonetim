@@ -91,4 +91,24 @@ class ServiceProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Mevcut servis kaydında `arizaNotu` alanını günceller; boş metinde alanı siler.
+  Future<void> updateServiceRecordArizaNotu({
+    required String serviceId,
+    required String text,
+  }) async {
+    final id = serviceId.trim();
+    if (id.isEmpty) throw ArgumentError('Geçersiz servis kaydı');
+
+    final ref = _firestore
+        .collection(FirestoreCollections.serviceRecords)
+        .doc(id);
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      await ref.update({'arizaNotu': FieldValue.delete()});
+    } else {
+      await ref.update({'arizaNotu': trimmed});
+    }
+    notifyListeners();
+  }
 }

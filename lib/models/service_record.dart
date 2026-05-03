@@ -94,6 +94,9 @@ class LaborItem {
   }
 }
 
+/// [copyWith] içinde `arizaNotu` için “değiştirme” anlamında kullanılır.
+const Object _serviceRecordCopyWithUnset = Object();
+
 class ServiceRecord {
   const ServiceRecord({
     required this.id,
@@ -111,6 +114,7 @@ class ServiceRecord {
     required this.grandTotal,
     required this.notes,
     required this.status,
+    this.arizaNotu,
   });
 
   final String id;
@@ -129,6 +133,9 @@ class ServiceRecord {
   final String notes;
   final String status;
 
+  /// Bu servise bağlı araç şikâyeti / arıza metni (tek alan).
+  final String? arizaNotu;
+
   ServiceRecord copyWith({
     String? id,
     String? vehiclePlate,
@@ -145,6 +152,7 @@ class ServiceRecord {
     double? grandTotal,
     String? notes,
     String? status,
+    Object? arizaNotu = _serviceRecordCopyWithUnset,
   }) {
     return ServiceRecord(
       id: id ?? this.id,
@@ -162,6 +170,10 @@ class ServiceRecord {
       grandTotal: grandTotal ?? this.grandTotal,
       notes: notes ?? this.notes,
       status: status ?? this.status,
+      arizaNotu:
+          identical(arizaNotu, _serviceRecordCopyWithUnset)
+              ? this.arizaNotu
+              : arizaNotu as String?,
     );
   }
 
@@ -197,11 +209,12 @@ class ServiceRecord {
       grandTotal: (map['grandTotal'] as num?)?.toDouble() ?? 0,
       notes: (map['notes'] ?? '') as String,
       status: (map['status'] ?? 'open') as String,
+      arizaNotu: _parseOptionalString(map['arizaNotu']),
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final m = <String, dynamic>{
       'id': id,
       'vehiclePlate': vehiclePlate,
       'vehicleKm': vehicleKm,
@@ -218,6 +231,17 @@ class ServiceRecord {
       'notes': notes,
       'status': status,
     };
+    final an = arizaNotu?.trim();
+    if (an != null && an.isNotEmpty) {
+      m['arizaNotu'] = an;
+    }
+    return m;
+  }
+
+  static String? _parseOptionalString(dynamic value) {
+    if (value == null) return null;
+    final s = value.toString().trim();
+    return s.isEmpty ? null : s;
   }
 
   static DateTime _toDateTime(dynamic value) {

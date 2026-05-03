@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:otoservis_app/models/service_record.dart';
 import 'package:otoservis_app/models/vehicle.dart';
+import 'package:otoservis_app/providers/service_provider.dart';
 import 'package:otoservis_app/providers/vehicle_provider.dart';
 import 'package:otoservis_app/utils/constants.dart';
 import 'package:otoservis_app/utils/formatters.dart';
@@ -127,6 +128,83 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
     return '$base · Son 2 işlem farkı: $sign${AppFormatters.formatKm(diff.abs())} km';
   }
 
+  /// Araç belgesindeki notları, zamanda hangi servise denk geldiğine göre gruplar
+  /// (`_records` en yeni servis önce sıralı).
+  Map<int, List<Map<String, dynamic>>> _bucketLegacyIssueNotesByService(
+    List<ServiceRecord> descNewestFirst,
+    List<Map<String, dynamic>> legacyNotes,
+  ) {
+    final n = descNewestFirst.length;
+    final buckets = <int, List<Map<String, dynamic>>>{
+      for (var i = 0; i < n; i++) i: <Map<String, dynamic>>[],
+    };
+    for (final note in legacyNotes) {
+      final at = note['addedAt'];
+      if (at is! DateTime) continue;
+
+      var placed = false;
+      for (var i = 0; i < n; i++) {
+        final upper = descNewestFirst[i].date;
+        final lower =
+            i + 1 < n
+                ? descNewestFirst[i + 1].date
+                : DateTime.fromMillisecondsSinceEpoch(0);
+        if (!at.isAfter(upper) && at.isAfter(lower)) {
+          buckets[i]!.add(note);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        buckets[0]!.add(note);
+      }
+    }
+    for (var i = 0; i < n; i++) {
+      buckets[i]!.sort((a, b) {
+        final ta = a['addedAt'];
+        final tb = b['addedAt'];
+        if (ta is DateTime && tb is DateTime) {
+          return ta.compareTo(tb);
+        }
+        return 0;
+      });
+    }
+    return buckets;
+  }
+
+  Widget _arizaBulletLine(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '• ',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.orange.shade800,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.4,
+                fontStyle: FontStyle.italic,
+                color: Colors.orange.shade900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openPdfPreview(ServiceRecord record) {
     if (record.id.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +213,67 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
       return;
     }
     context.push('/pdf/preview/${Uri.encodeComponent(record.id)}');
+  }
+
+  Future<void> _showEditArizaDialog(ServiceRecord record) async {
+    final ctrl = TextEditingController(text: record.arizaNotu ?? '');
+    try {
+      final saved = await showDialog<bool>(
+        context: context,
+        builder:
+            (dCtx) => AlertDialog(
+              title: const Text('Arıza Bilgisi Düzenle'),
+              content: TextField(
+                controller: ctrl,
+                maxLines: 5,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Arıza / şikâyet',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dCtx).pop(false),
+                  child: const Text('İptal'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dCtx).pop(true),
+                  child: const Text('Kaydet'),
+                ),
+              ],
+            ),
+      );
+      if (saved != true || !mounted) return;
+
+      final trimmed = ctrl.text.trim();
+      await context.read<ServiceProvider>().updateServiceRecordArizaNotu(
+        serviceId: record.id,
+        text: trimmed,
+      );
+      if (!mounted) return;
+      setState(() {
+        final i = _records.indexWhere((x) => x.id == record.id);
+        if (i >= 0) {
+          _records[i] = _records[i].copyWith(
+            arizaNotu: trimmed.isEmpty ? null : trimmed,
+          );
+        }
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Arıza bilgisi kaydedildi.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Kaydedilemedi: $e')));
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.dispose());
+    }
   }
 
   Future<void> _confirmDeleteRecord(ServiceRecord record) async {
@@ -235,13 +374,21 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
   Widget build(BuildContext context) {
     final vp = context.watch<VehicleProvider>();
     final v = _vehicle;
-    final vehicleIssues = v?.issueNotes ?? const <Map<String, dynamic>>[];
-    const maxIssuesShown = 3;
-    final shownIssues =
-        vehicleIssues.length > maxIssuesShown
-            ? vehicleIssues.take(maxIssuesShown).toList()
-            : vehicleIssues;
-    final hiddenCount = vehicleIssues.length - shownIssues.length;
+    final legacyIssueNotesReadonly =
+        v == null
+            ? const <Map<String, dynamic>>[]
+            : v.issueNotes
+                .where(
+                  (n) => (n['text'] ?? '').toString().trim().isNotEmpty,
+                )
+                .toList();
+    final legacyByServiceIndex =
+        _records.isEmpty
+            ? <int, List<Map<String, dynamic>>>{}
+            : _bucketLegacyIssueNotesByService(
+              _records,
+              legacyIssueNotesReadonly,
+            );
     return Scaffold(
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -351,101 +498,6 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            if (vehicleIssues.isNotEmpty) ...[
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Araç Arızaları',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      ...shownIssues.map(
-                                        (note) => Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 10,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    '• ',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color:
-                                                          Colors
-                                                              .orange
-                                                              .shade700,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                  Expanded(
-                                                    child: Text(
-                                                      note['text'] ?? '',
-                                                      style: const TextStyle(
-                                                        fontSize: 13.5,
-                                                        height: 1.4,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                  left: 14,
-                                                  top: 4,
-                                                ),
-                                                child: Text(
-                                                  AppFormatters.formatDateTime(
-                                                    note['addedAt'] is DateTime
-                                                        ? note['addedAt']
-                                                            as DateTime
-                                                        : DateTime.now(),
-                                                  ),
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey.shade600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      if (hiddenCount > 0)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 6,
-                                          ),
-                                          child: Text(
-                                            '+$hiddenCount daha',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey.shade600,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                            ],
                             Row(
                               children: [
                                 Expanded(
@@ -475,14 +527,42 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                               Card(
                                 child: Padding(
                                   padding: const EdgeInsets.all(24),
-                                  child: Center(
-                                    child: Text(
-                                      'Henüz servis kaydı yok.',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(color: Colors.black45),
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Center(
+                                        child: Text(
+                                          'Henüz servis kaydı yok.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: Colors.black45,
+                                              ),
+                                        ),
+                                      ),
+                                      if (legacyIssueNotesReadonly
+                                          .isNotEmpty) ...[
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Plakaya kayıtlı arıza notları',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: Colors.black54,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ...legacyIssueNotesReadonly.map(
+                                          (note) => _arizaBulletLine(
+                                            (note['text'] ?? '').toString(),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               )
@@ -496,6 +576,14 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                     kmLine == null
                                         ? summary
                                         : '$summary\n$kmLine';
+                                final ariza = r.arizaNotu?.trim();
+                                final hasAriza =
+                                    ariza != null && ariza.isNotEmpty;
+                                final legacyForRow =
+                                    legacyByServiceIndex[i] ??
+                                    const <Map<String, dynamic>>[];
+                                final hasLegacy = legacyForRow.isNotEmpty;
+                                final hasAnyIssue = hasAriza || hasLegacy;
 
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 10),
@@ -508,11 +596,29 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                               horizontal: 16,
                                               vertical: 8,
                                             ),
-                                        title: Text(
-                                          AppFormatters.formatDateTime(r.date),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        title: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              AppFormatters.formatDateTime(
+                                                r.date,
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (hasAnyIssue) ...[
+                                              ...legacyForRow.map(
+                                                (note) => _arizaBulletLine(
+                                                  (note['text'] ?? '')
+                                                      .toString(),
+                                                ),
+                                              ),
+                                              if (hasAriza)
+                                                _arizaBulletLine(ariza),
+                                            ],
+                                          ],
                                         ),
                                         subtitle: Padding(
                                           padding: const EdgeInsets.only(
@@ -524,6 +630,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
+                                        isThreeLine: hasAnyIssue,
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
@@ -562,17 +669,48 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
                                                   _openPdfPreview(r);
                                                   return;
                                                 }
+                                                if (value == 'edit_ariza') {
+                                                  _showEditArizaDialog(r);
+                                                  return;
+                                                }
                                                 if (value == 'delete') {
                                                   _confirmDeleteRecord(r);
                                                 }
                                               },
                                               itemBuilder:
-                                                  (ctx) => const [
-                                                    PopupMenuItem<String>(
+                                                  (ctx) => [
+                                                    const PopupMenuItem<
+                                                      String
+                                                    >(
                                                       value: 'pdf',
                                                       child: Text('PDF Aç'),
                                                     ),
                                                     PopupMenuItem<String>(
+                                                      value: 'edit_ariza',
+                                                      child: Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.edit_note,
+                                                            size: 20,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 10,
+                                                          ),
+                                                          Flexible(
+                                                            child: Text(
+                                                              'Araç arıza bilgileri gir / düzenle',
+                                                              style: Theme.of(
+                                                                ctx,
+                                                              ).textTheme.bodyMedium,
+                                                              softWrap: true,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const PopupMenuItem<
+                                                      String
+                                                    >(
                                                       value: 'delete',
                                                       child: Text(
                                                         'Servis Kaydını Sil',

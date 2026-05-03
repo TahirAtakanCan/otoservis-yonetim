@@ -178,6 +178,21 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
     return double.parse((_subtotal() + _kdvAmount()).toStringAsFixed(2));
   }
 
+  /// Eklenen arıza satırları + yazımda kalan metin; yeni [ServiceRecord.arizaNotu] için birleştirilir.
+  String? _combinedArizaNotuForSave() {
+    final lines =
+        _newIssueNotes
+            .map((m) => (m['text'] ?? '').toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+    final pending = _newIssueController.text.trim();
+    if (pending.isNotEmpty) {
+      lines.add(pending);
+    }
+    if (lines.isEmpty) return null;
+    return lines.join('\n');
+  }
+
   void _addIssueNote() {
     final text = _newIssueController.text.trim();
     if (text.isNotEmpty) {
@@ -634,18 +649,12 @@ class _ServiceEntryScreenState extends State<ServiceEntryScreen>
       grandTotal: grand,
       notes: _notesController.text.trim(),
       status: 'completed',
+      arizaNotu: _combinedArizaNotuForSave(),
     );
 
     try {
-      // Yeni arıza notlarını save et
-      if (_newIssueNotes.isNotEmpty) {
-        final vehicle = vp.selectedVehicle;
-        if (vehicle != null) {
-          final updatedNotes = [...vehicle.issueNotes, ..._newIssueNotes];
-          final updatedVehicle = vehicle.copyWith(issueNotes: updatedNotes);
-          await vp.saveVehicle(updatedVehicle);
-        }
-      }
+      // Arıza bilgisi artık yalnızca servis kaydında (arizaNotu). Eski sürümlerdeki
+      // vehicles.issueNotes alanı bu akışta güncellenmez; geçmiş veri okuması için modelde kalır.
 
       final id = await svc.completeServiceAndDeductStock(record: record);
       if (!mounted) return;
